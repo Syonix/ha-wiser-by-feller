@@ -32,6 +32,12 @@
         "description": "Enter the IP address of your \u00b5Gateway and click submit. The buttons should start to flash pink and purple. Press any of the flashing buttons on the \u00b5Gateway within 30 seconds to connect your Home Assistant instance.",
         "title": "Connect Wiser by Feller \u00b5Gateway"
       }
+    },
+    "options": {
+      "allow_missing_gateway_data": {
+        "name": "Allow missing µGateway data",
+        "description": "By default the setup fails, if fields like fw_version or serial_nr are missing for devices in the API response. Enable this option for debug purposes to disable the check. WARNING: Use with caution, this can affect entity IDs and functionality!"
+      }
     }
   },
   "entity": {

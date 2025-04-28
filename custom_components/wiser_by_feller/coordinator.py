@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
+from types import MappingProxyType
+from typing import Any
 
 from aiowiserbyfeller import (
     AuthorizationFailed,
@@ -24,7 +26,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN
+from .const import DOMAIN, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
 from .exceptions import (
     InvalidEntityChannelSpecified,
     InvalidEntitySpecified,
@@ -46,7 +48,14 @@ def get_unique_id(device: Device, load: Load | None) -> str:
 class WiserCoordinator(DataUpdateCoordinator):
     """Class for coordinating all Wiser devices / entities."""
 
-    def __init__(self, hass, api: WiserByFellerAPI, host: str, token: str) -> None:
+    def __init__(
+        self,
+        hass,
+        api: WiserByFellerAPI,
+        host: str,
+        token: str,
+        options: MappingProxyType[str, Any],
+    ) -> None:
         """Initialize global data updater."""
         super().__init__(
             hass,
@@ -56,6 +65,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         )
         self._hass = hass
         self._api = api
+        self._options = options
         self._loads = None
         self._states = None
         self._devices = None
@@ -264,12 +274,17 @@ class WiserCoordinator(DataUpdateCoordinator):
 
     def validate_device_data(self, device: Device):
         """Validate API response for critical object keys."""
+        if self._options[OPTIONS_ALLOW_MISSING_GATEWAY_DATA]:
+            return
+
         for key in ("a", "c"):
             for subkey in ("comm_ref", "fw_version", "comm_name", "serial_nr"):
-                if device[key][subkey] == "":
-                    raise UnexpectedGatewayResult(
-                        f"Invalid API response: Device {device.id}.{key} has an empty field {subkey}!"
-                    )
+                if getattr(device, key)[subkey] != "":
+                    continue
+
+                raise UnexpectedGatewayResult(
+                    f"Invalid API response: Device {device.id}.{key} has an empty field {subkey}!"
+                )
 
     async def async_update_rooms(self) -> None:
         """Update Wiser rooms from µGateway."""

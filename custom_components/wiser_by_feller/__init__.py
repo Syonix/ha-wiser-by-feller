@@ -29,7 +29,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     auth = Auth(session, entry.data["host"], token=entry.data["token"])
     api = WiserByFellerAPI(auth)
 
-    coordinator = WiserCoordinator(hass, api, entry.data["host"], entry.data["token"])
+    coordinator = WiserCoordinator(
+        hass, api, entry.data["host"], entry.data["token"], entry.options
+    )
     coordinator.ws_init()
 
     hass.data[DOMAIN][entry.entry_id] = coordinator
