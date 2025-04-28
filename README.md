@@ -31,6 +31,12 @@ If it does not exist yet, you can create it in the home assistant installation d
 3. Enter the IP address of your µGateway
 4. The buttons on your µGateway should start flashing purple and pink. Press one of them within 30 seconds
 
+### Configuration
+#### Allow missing µGateway data
+By default, the setup fails, if fields like fw_version or serial_nr are missing for devices in the API response. Enable this option for debug purposes to disable the check. See [this Wiser API GitHub issue for more details](https://github.com/Feller-AG/wiser-api/issues/43).
+
+**Warning:** Use with caution, this can affect entity IDs and functionality!
+
 ## Core principles of the integration
 * TODO
 
