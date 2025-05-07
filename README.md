@@ -34,7 +34,8 @@ Home Assistant should ✨automagically✨ discover your µGateway and suggest to
 
 1. Go to Settings → Devices & services and click **"Add Integration"**.
 2. Search for **Wiser by Feller**
-3. Enter the **IP address** of your µGateway. <br/> ***Important:** If you have multiple home assistant installations or other applications that connect to your µGateway, make sure to use a unique username (e.g. `homeassistant` and `ha-testbench`) for each installation. Connecting with the same username on a second installation leads to the first one being de-authorized.*
+3. Enter the **IP address** of your µGateway.\
+   ***Important:** If you have multiple home assistant installations or other applications that connect to your µGateway, make sure to use a unique username (e.g. `homeassistant` and `ha-testbench`) for each installation. Connecting with the same username on a second installation leads to the first one being de-authorized.*
 4. Fill in the **username** you would like home assistant to claim with the Gateway.
 5. The buttons on your µGateway should start **flashing purple and pink**. Press one of them within 30 seconds
  
@@ -89,6 +90,21 @@ This feature can be used to indicate system status (e.g. turn a light switch to 
 
 ### 🧰 Housekeeping
 The integration automatically prompts you to re-connect if there is any authentication error.
+
+## ☑️ Supported devices
+| Device                            |  Support  | Remarks                        |
+|-----------------------------------|:---------:|--------------------------------|
+| Light switches                    |     ✅     | Full support, well tested      |
+| LED dimmers                       |     ✅     | Full support, well tested      |
+| DALI dimmers                      |     ✅     | Full support, well tested      |
+| Blind / awning controls           |     ✅     | Full support, well tested      |
+| Secondary controls (Nebenstellen) |     ✅     | Support for status LED control |
+| Heating controller 6K             |    🏗️    | Under development...           |
+| Temperature sensors               |    🏗     | Under development...           |
+| Weather station + REG module      |           | On the roadmap...              |
+
+> [!NOTE]
+> If you own a Wiser system with a heating controller or a weather station, please contact me. I am looking for real life API data examples and test users 😉
 
 ## 🛣️ Roadmap
 Here's a couple of things that are on the roadmap for future releases:
