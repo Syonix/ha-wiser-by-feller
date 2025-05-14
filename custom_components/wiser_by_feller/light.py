@@ -75,7 +75,6 @@ class WiserOnOffEntity(WiserEntity, LightEntity):
     ) -> None:
         """Set up Wiser on/off light entity."""
         super().__init__(coordinator, load, device, room)
-        self._attr_name = None
         self._brightness = None
         self._attr_color_mode = ColorMode.ONOFF
         self._attr_supported_color_modes = [ColorMode.ONOFF]
@@ -108,7 +107,6 @@ class WiserOnOffSwitchEntity(WiserEntity, SwitchEntity):
     ) -> None:
         """Set up Wiser on/off switch entity."""
         super().__init__(coordinator, load, device, room)
-        self._attr_name = None
         self._brightness = None
 
     @property
@@ -139,7 +137,6 @@ class WiserDimEntity(WiserEntity, LightEntity):
     ) -> None:
         """Set up Wiser dimmable light entity."""
         super().__init__(coordinator, load, device, room)
-        self._attr_name = None
         self._attr_color_mode = ColorMode.BRIGHTNESS
         self._attr_supported_color_modes = [ColorMode.BRIGHTNESS]
 

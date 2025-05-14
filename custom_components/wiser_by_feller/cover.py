@@ -66,7 +66,6 @@ class WiserRelayEntity(WiserEntity, CoverEntity):
         """Set up the relay entity."""
         super().__init__(coordinator, load, device, room)
 
-        self._attr_name = None
         self._attr_supported_features = (
             CoverEntityFeature.OPEN | CoverEntityFeature.CLOSE | CoverEntityFeature.STOP
         )

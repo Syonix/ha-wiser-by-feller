@@ -34,6 +34,7 @@ class WiserEntity(CoordinatorEntity):
         )  # TODO: Suboptimal
         self.coordinator = coordinator
         self._attr_has_entity_name = True
+        self._attr_name = None
         self._attr_raw_unique_id = get_unique_id(device, load)
         self._attr_unique_id = self._attr_raw_unique_id
         self._device = device
