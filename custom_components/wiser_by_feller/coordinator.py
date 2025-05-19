@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import timedelta
 import logging
 from types import MappingProxyType
@@ -14,6 +13,7 @@ from aiowiserbyfeller import (
     Job,
     Load,
     Scene,
+    Sensor,
     UnauthorizedUser,
     UnsuccessfulRequest,
     Websocket,
@@ -22,6 +22,7 @@ from aiowiserbyfeller import (
 from aiowiserbyfeller.const import LOAD_SUBTYPE_ONOFF_DTO, LOAD_TYPE_ONOFF
 import aiowiserbyfeller.errors
 from aiowiserbyfeller.util import parse_wiser_device_ref_c
+import async_timeout
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed
@@ -74,6 +75,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         self._device_ids_by_serial = None
         self._valid_unique_ids = []
         self._scenes = None
+        self._sensors = None
         self._jobs = None
         self._rooms = None
         self._rssi = None
@@ -99,6 +101,11 @@ class WiserCoordinator(DataUpdateCoordinator):
     def scenes(self) -> list[Scene] | None:
         """A list of scenes configured in the Wiser by Feller ecosystem (Wiser eSetup app or Wiser Home app)."""
         return self._scenes
+
+    @property
+    def sensors(self) -> list[Sensor] | None:
+        """A list of scenes configured in the Wiser by Feller ecosystem (Wiser eSetup app or Wiser Home app)."""
+        return self._sensors
 
     @property
     def jobs(self) -> list[Job] | None:
@@ -190,7 +197,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         try:
             # Note: asyncio.TimeoutError and aiohttp.ClientError are already
             # handled by the data update coordinator.
-            async with asyncio.timeout(10):
+            async with async_timeout.timeout(10):
                 if self._loads is None:
                     await self.async_update_loads()
 
@@ -205,6 +212,9 @@ class WiserCoordinator(DataUpdateCoordinator):
 
                 if self._scenes is None:
                     await self.async_update_scenes()
+
+                if self._sensors is None:
+                    await self.async_update_sensors()
 
                 await self.async_update_valid_unique_ids()
                 await self.async_update_states()
@@ -238,9 +248,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         elif "westgroup" in data:
             self.ws_update_sensor(data["westgroup"])
         else:
-            _LOGGER.debug(
-                "Unsupported websocket data update received", extra={"data": data}
-            )
+            _LOGGER.debug(f"Unsupported websocket data update received: {data}")
 
     def ws_update_load(self, data: dict) -> None:
         """Process websocket load update."""
@@ -348,6 +356,15 @@ class WiserCoordinator(DataUpdateCoordinator):
             result[scene.id] = scene
 
         self._scenes = result
+
+    async def async_update_sensors(self) -> None:
+        """Update Wiser sensors from µGateway."""
+        result = {}
+
+        for sensor in await self._api.async_get_sensors():
+            result[sensor.id] = sensor
+
+        self._sensors = result
 
     async def async_update_rssi(self) -> None:
         """Update Wiser rssi from µGateway."""
