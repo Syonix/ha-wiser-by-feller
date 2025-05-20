@@ -48,9 +48,11 @@ async def async_setup_entry(
     for sensor in coordinator.sensors.items():
         sensor = sensor[1]
         device = coordinator.devices[sensor.device]
+        sensor.raw_data = coordinator.states[sensor.id]
+        room = None
         if isinstance(sensor, Temperature):
             entities.append(
-                TemperatureSensorEntity(coordinator, None, device, None, sensor)
+                TemperatureSensorEntity(coordinator, None, device, room, sensor)
             )
 
     if entities:
@@ -122,5 +124,5 @@ class TemperatureSensorEntity(WiserEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._sensor = self.coordinator.sensors[self._sensor.id]
+        self._sensor.raw_data = self.coordinator.states[self._sensor.id]
         self.async_write_ha_state()
