@@ -52,7 +52,7 @@ async def async_setup_entry(
         room = None
         if isinstance(sensor, Temperature):
             entities.append(
-                TemperatureSensorEntity(coordinator, None, device, room, sensor)
+                WiserTemperatureSensorEntity(coordinator, None, device, room, sensor)
             )
 
     if entities:
@@ -93,8 +93,8 @@ class WiserRssiEntity(WiserEntity, SensorEntity):
         return self._rssi
 
 
-class TemperatureSensorEntity(WiserEntity, SensorEntity):
-    """A Wiser temperature sensor (RT-Sensor) entity."""
+class WiserSensorEntity(WiserEntity, SensorEntity):
+    """A Wiser sensor entity."""
 
     def __init__(
         self,
@@ -104,12 +104,26 @@ class TemperatureSensorEntity(WiserEntity, SensorEntity):
         room: dict | None,
         sensor: Sensor,
     ) -> None:
-        """Set up the temperature sensor entity."""
+        """Set up the sensor entity."""
         super().__init__(coordinator, load, device, room)
+        self._sensor = sensor
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._sensor.raw_data = self.coordinator.states[self._sensor.id]
+        self.async_write_ha_state()
+
+
+class WiserTemperatureSensorEntity(WiserSensorEntity):
+    """A Wiser temperature sensor (RT-Sensor) entity."""
+
+    def __init__(self, coordinator, load, device, room, sensor):
+        """Set up the temperature sensor entity."""
+        super().__init__(coordinator, load, device, room, sensor)
         self._attr_unique_id = f"{self._attr_raw_unique_id}_temperature"
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
-        self._sensor = sensor
 
     @property
     def native_value(self) -> float | None:
@@ -120,9 +134,3 @@ class TemperatureSensorEntity(WiserEntity, SensorEntity):
     def native_unit_of_measurement(self) -> str | None:
         """Return the unit of temperature."""
         return UnitOfTemperature.CELSIUS
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self._sensor.raw_data = self.coordinator.states[self._sensor.id]
-        self.async_write_ha_state()
