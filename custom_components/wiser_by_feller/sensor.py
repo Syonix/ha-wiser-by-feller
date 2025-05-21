@@ -116,7 +116,7 @@ class WiserSensorEntity(WiserEntity, SensorEntity):
 
 
 class WiserTemperatureSensorEntity(WiserSensorEntity):
-    """A Wiser temperature sensor (RT-Sensor) entity."""
+    """A Wiser room temperature sensor entity."""
 
     def __init__(self, coordinator, load, device, room, sensor):
         """Set up the temperature sensor entity."""

@@ -104,7 +104,7 @@ class WiserCoordinator(DataUpdateCoordinator):
 
     @property
     def sensors(self) -> list[Sensor] | None:
-        """A list of scenes configured in the Wiser by Feller ecosystem (Wiser eSetup app or Wiser Home app)."""
+        """A list of sensors configured in the Wiser by Feller ecosystem (Wiser eSetup app or Wiser Home app)."""
         return self._sensors
 
     @property
@@ -236,18 +236,15 @@ class WiserCoordinator(DataUpdateCoordinator):
 
     def ws_update_data(self, data: dict) -> None:
         """Process websocket data update."""
-        _LOGGER.debug("data update received", extra={"data": data})
+        _LOGGER.debug("Websocket data update received", extra={"data": data})
         if self._states is None:
             return  # State is not ready yet.
         if "load" in data:
             self._states[data["load"]["id"]] = data["load"]["state"]
         elif "sensor" in data:
-            # Example data: {'sensor': {'id': 55, 'value': 23.3}}
             self._states[data["sensor"]["id"]] = data["sensor"]
         elif "hvacgroup" in data:
-            # TODO: Implement HVAC support issue #7 https://github.com/Syonix/ha-wiser-by-feller/issues/7
-            # Example data: {'hvacgroup': {'id': 87, 'state': {'on': True, 'flags': {...}, 'boost_temperature': 0, 'heating_cooling_level': 0, 'unit': 'C', 'ambient_temperature': 24.1, 'target_temperature': 19.5}}]
-            pass
+            self._states[data["hvacgroup"]["id"]] = data["hvacgroup"]["state"]
         elif "westgroup" in data:
             # TODO: Implement weather station support #9 https://github.com/Syonix/ha-wiser-by-feller/issues/9
             # Example data:
