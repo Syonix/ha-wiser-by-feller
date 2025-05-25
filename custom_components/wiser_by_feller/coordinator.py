@@ -236,24 +236,28 @@ class WiserCoordinator(DataUpdateCoordinator):
 
     def ws_update_data(self, data: dict) -> None:
         """Process websocket data update."""
-        _LOGGER.debug("Websocket data update received", extra={"data": data})
         if self._states is None:
             return  # State is not ready yet.
         if "load" in data:
+            _LOGGER.debug("Websocket load data update received: %s", data["load"])
             self._states[data["load"]["id"]] = data["load"]["state"]
         elif "sensor" in data:
+            _LOGGER.debug("Websocket sensor data update received: %s", data["sensor"])
             self._states[data["sensor"]["id"]] = data["sensor"]
         elif "hvacgroup" in data:
+            _LOGGER.debug(
+                "Websocket hvacgroup data update received: %s", data["hvacgroup"]
+            )
             self._states[data["hvacgroup"]["id"]] = data["hvacgroup"]["state"]
         elif "westgroup" in data:
-            # TODO: Implement weather station support #9 https://github.com/Syonix/ha-wiser-by-feller/issues/9
-            # Example data:
-            pass
-        else:
             _LOGGER.debug(
-                "Unsupported websocket data update received",
-                extra={"data": data},
+                "Websocket westgroup data update received: %s", data["westgroup"]
             )
+            # TODO: Implement weather station support #9 https://github.com/Syonix/ha-wiser-by-feller/issues/9
+        else:
+            _LOGGER.debug("Unsupported websocket data update received: %s", data)
+
+        self.async_set_updated_data(None)
 
     async def async_update_loads(self) -> None:
         """Update Wiser device loads from µGateway."""
