@@ -63,7 +63,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         super().__init__(
             hass,
             _LOGGER,
-            name="WiserLightCoordinator",
+            name="WiserCoordinator",
             update_interval=timedelta(seconds=30),
         )
         self._hass = hass
