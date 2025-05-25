@@ -1,4 +1,4 @@
 # Note: This file is only used for GitHub actions or dev environments.
 # Keep in sync with custom_components/wiser_by_feller/manifest.json
 websockets
-aiowiserbyfeller==1.0.0-beta.16
+aiowiserbyfeller==1.0.0b18

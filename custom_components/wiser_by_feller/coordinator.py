@@ -238,6 +238,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         """Process websocket data update."""
         if self._states is None:
             return  # State is not ready yet.
+
         if "load" in data:
             _LOGGER.debug("Websocket load data update received: %s", data["load"])
             self._states[data["load"]["id"]] = data["load"]["state"]
@@ -250,10 +251,11 @@ class WiserCoordinator(DataUpdateCoordinator):
             )
             self._states[data["hvacgroup"]["id"]] = data["hvacgroup"]["state"]
         elif "westgroup" in data:
+            # This would probably send updates when Wiser WEST group events happen, e.g. when a cover
+            # is retracted due to a wind or rain event. Data updates are handled in the sensor domain
             _LOGGER.debug(
                 "Websocket westgroup data update received: %s", data["westgroup"]
             )
-            # TODO: Implement weather station support #9 https://github.com/Syonix/ha-wiser-by-feller/issues/9
         else:
             _LOGGER.debug("Unsupported websocket data update received: %s", data)
 
