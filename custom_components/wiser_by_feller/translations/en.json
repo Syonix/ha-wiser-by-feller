@@ -68,6 +68,20 @@
     "sensor": {
       "rssi": {
         "name": "RSSI"
+      },
+      "hail": {
+        "name": "Hail",
+        "state": {
+          "on": "Hail detected",
+          "off": "No hail"
+        }
+      },
+      "rain": {
+        "name": "Rain",
+        "state": {
+          "on": "Rain detected",
+          "off": "No rain"
+        }
       }
     }
   },
