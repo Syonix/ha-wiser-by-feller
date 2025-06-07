@@ -38,6 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await wiser_coordinator.async_config_entry_first_refresh()
     await wiser_coordinator.async_remove_orphan_devices(entry)
+    await wiser_coordinator.async_setup_gateway()
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     hass.services.async_register(

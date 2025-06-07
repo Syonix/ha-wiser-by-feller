@@ -30,7 +30,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
+from .const import DOMAIN, MANUFACTURER, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
 from .exceptions import (
     InvalidEntityChannelSpecified,
     InvalidEntitySpecified,
@@ -83,6 +83,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         self._rooms = None
         self._rssi = None
         self._gateway = None
+        self._gateway_info = None
         self._ws = Websocket(host, token, _LOGGER)
 
     @property
@@ -134,7 +135,13 @@ class WiserCoordinator(DataUpdateCoordinator):
         return self._gateway
 
     @property
-    def rooms(self) -> dict[int, dict] | None:
+    def gateway_info(self) -> dict | None:
+        """A dict debug information of the Wiser device that acts as µGateway in the connected network."""
+
+        return self._gateway_info
+
+    @property
+    def rooms(self) -> list[dict] | None:
         """A list of rooms configured in the Wiser by Feller ecosystem (Wiser eSetup app or Wiser Home app)."""
         return self._rooms
 
@@ -184,6 +191,23 @@ class WiserCoordinator(DataUpdateCoordinator):
         await self._api.async_apply_device_config(config["id"])
 
         return True
+
+    async def async_setup_gateway(self) -> None:
+        """Set up the gateway device."""
+
+        info = parse_wiser_device_ref_c(self._gateway.c["comm_ref"])
+        self._gateway_info = await self._api.async_get_info_debug()
+        device_registry = dr.async_get(self.hass)
+        device_registry.async_get_or_create(
+            config_entry_id=self.config_entry.entry_id,
+            configuration_url=f"http://{self.api_host}",
+            identifiers={(DOMAIN, self._gateway.combined_serial_number)},
+            manufacturer=MANUFACTURER,
+            model=f"{self._gateway.c_name}",
+            name="µGateway",
+            sw_version=f"{self._gateway_info['sw']}",
+            hw_version=f"{info['generation']} ({self._gateway.c['comm_ref']})",
+        )
 
     async def async_ping_device(self, device_id: str) -> bool:
         """Device will light up the yellow LEDs of all buttons for a short time."""

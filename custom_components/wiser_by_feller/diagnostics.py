@@ -12,7 +12,7 @@ from homeassistant.helpers.device_registry import DeviceEntry
 
 from . import DOMAIN
 
-TO_REDACT = ["token", "serial_nr", "serial_number"]
+TO_REDACT = ["token", "serial_nr", "serial_number", "sn", "instance_id"]
 
 
 async def async_get_config_entry_diagnostics(
@@ -21,17 +21,17 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for a config entry."""
     _coordinator = hass.data[DOMAIN][entry.entry_id]
     _loads_json = [load.raw_data for load in _coordinator.loads]
-
     _devices_json = [
         _coordinator.devices[device_id].raw_data for device_id in _coordinator.devices
     ]
+    _gateway_info_json = _coordinator.gateway_info
 
     return {
         "entry_data": async_redact_data(entry.data, TO_REDACT),
+        "gateway_info": async_redact_data(_gateway_info_json, TO_REDACT),
         "loads": async_redact_data(_loads_json, TO_REDACT),
         "rooms": async_redact_data(_coordinator.rooms, TO_REDACT),
         "devices": async_redact_data(_devices_json, TO_REDACT),
-        # TODO:  Gateway data
     }
 
 
