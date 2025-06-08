@@ -87,7 +87,6 @@ class WiserCoordinator(DataUpdateCoordinator):
         self._assigned_thermostats = {}
         self._jobs = None
         self._rooms = None
-        self._rssi = None
         self._gateway = None
         self._gateway_info = None
         self._ws = Websocket(host, token, _LOGGER)
@@ -149,11 +148,6 @@ class WiserCoordinator(DataUpdateCoordinator):
     def rooms(self) -> list[dict] | None:
         """A list of rooms configured in the Wiser by Feller ecosystem (Wiser eSetup app or Wiser Home app)."""
         return self._rooms
-
-    @property
-    def rssi(self) -> int | None:
-        """The RSSI of the connected µGateway."""
-        return self._rssi
 
     @property
     def system_health(self) -> dict | None:
@@ -269,7 +263,6 @@ class WiserCoordinator(DataUpdateCoordinator):
                 await self.async_update_valid_unique_ids()
                 await self.async_update_states()
                 await self.async_system_health()
-                await self.async_update_rssi()
         except AuthorizationFailed as err:
             # Raising ConfigEntryAuthFailed will cancel future updates
             # and start a config flow with SOURCE_REAUTH (async_step_reauth)
@@ -420,10 +413,6 @@ class WiserCoordinator(DataUpdateCoordinator):
             self._assigned_thermostats[group.thermostat_ref.unprefixed_address] = (
                 group.id
             )
-
-    async def async_update_rssi(self) -> None:
-        """Update Wiser rssi from µGateway."""
-        self._rssi = await self._api.async_get_net_rssi()
 
     async def async_system_health(self) -> None:
         """Update Wiser system health from µGateway."""
