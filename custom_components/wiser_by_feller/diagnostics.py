@@ -10,9 +10,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry
 
+from custom_components.wiser_by_feller.const import GATEWAY_NAME
+
 from . import DOMAIN
 
-TO_REDACT = ["token", "serial_nr", "serial_number", "sn", "instance_id"]
+TO_REDACT = ["token", "serial_nr", "serial_number", "sn", "instance_id", "identifiers"]
 
 
 async def async_get_config_entry_diagnostics(
@@ -32,6 +34,9 @@ async def async_get_config_entry_diagnostics(
         "loads": async_redact_data(_loads_json, TO_REDACT),
         "rooms": async_redact_data(_coordinator.rooms, TO_REDACT),
         "devices": async_redact_data(_devices_json, TO_REDACT),
+        "scenes": async_redact_data(
+            [scene.raw_data for scene in _coordinator.scenes.values()], TO_REDACT
+        ),
     }
 
 
@@ -40,10 +45,17 @@ async def async_get_device_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a device."""
     _coordinator = hass.data[DOMAIN][entry.entry_id]
-    _device_id = next(iter(device.identifiers))[1].partition("_")[0]
-    _device_data = _coordinator.devices[_device_id].raw_data
+    result: dict[str, Any] = {}
+    result["device"] = async_redact_data(json.loads(device.json_repr), TO_REDACT)
 
-    return {
-        "device": async_redact_data(json.loads(device.json_repr), TO_REDACT),
-        "device_data": async_redact_data(_device_data, TO_REDACT),
-    }
+    if device.name == GATEWAY_NAME:
+        result["gateway_info"] = async_redact_data(_coordinator.gateway_info, TO_REDACT)
+        result["scenes"] = async_redact_data(
+            [scene.raw_data for scene in _coordinator.scenes.values()], TO_REDACT
+        )
+    else:
+        _device_id = next(iter(device.identifiers))[1].partition("_")[0]
+        _device_data = _coordinator.devices[_device_id].raw_data
+        result["device_data"] = async_redact_data(_device_data, TO_REDACT)
+
+    return result
