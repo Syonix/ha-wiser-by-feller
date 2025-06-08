@@ -132,7 +132,7 @@ async def async_setup_entry(
 
 
 # TODO: Is this compatible with iot_class local_push?
-class WiserGatewayEntity(CoordinatorEntity):
+class WiserSystemHealthEntity(CoordinatorEntity):
     """A Wiser µGateway sensor entity."""
 
     def __init__(
@@ -172,7 +172,7 @@ class WiserGatewayEntity(CoordinatorEntity):
         self._value = self.coordinator.system_health.get(self._key, self._value)
 
 
-class WiserUptimeSensorEntity(WiserGatewayEntity, SensorEntity):
+class WiserUptimeSensorEntity(WiserSystemHealthEntity, SensorEntity):
     """A Wiser µGateway Uptime sensor entity."""
 
     def __init__(
@@ -197,7 +197,7 @@ class WiserUptimeSensorEntity(WiserGatewayEntity, SensorEntity):
         self._date_since_boot = dt_util.utcnow() - self.offset
 
 
-class WiserDataSensorEntity(WiserGatewayEntity, SensorEntity):
+class WiserDataSensorEntity(WiserSystemHealthEntity, SensorEntity):
     """A Wiser µGateway Data sensor entity."""
 
     def __init__(
@@ -218,7 +218,7 @@ class WiserDataSensorEntity(WiserGatewayEntity, SensorEntity):
         self._attr_suggested_display_precision = 0
 
 
-class WiserCoreTempSensorEntity(WiserGatewayEntity, SensorEntity):
+class WiserCoreTempSensorEntity(WiserSystemHealthEntity, SensorEntity):
     """A Wiser µGateway Core Temperature sensor entity."""
 
     def __init__(
@@ -238,7 +238,7 @@ class WiserCoreTempSensorEntity(WiserGatewayEntity, SensorEntity):
         self._attr_suggested_display_precision = 1
 
 
-class WiserWlanResetsSensorEntity(WiserGatewayEntity, SensorEntity):
+class WiserWlanResetsSensorEntity(WiserSystemHealthEntity, SensorEntity):
     """A Wiser µGateway Wlan Resets sensor entity."""
 
     def __init__(
@@ -257,7 +257,7 @@ class WiserWlanResetsSensorEntity(WiserGatewayEntity, SensorEntity):
         self._attr_icon = "mdi:wifi-alert"
 
 
-class WiserMaxTasksSensorEntity(WiserGatewayEntity, SensorEntity):
+class WiserMaxTasksSensorEntity(WiserSystemHealthEntity, SensorEntity):
     """A Wiser µGateway Max Tasks sensor entity."""
 
     def __init__(
@@ -276,7 +276,7 @@ class WiserMaxTasksSensorEntity(WiserGatewayEntity, SensorEntity):
         self._attr_icon = "mdi:list-box-outline"
 
 
-class WiserWlanRSSISensorEntity(WiserGatewayEntity, SensorEntity):
+class WiserWlanRSSISensorEntity(WiserSystemHealthEntity, SensorEntity):
     """A Wiser µGateway WLAN RSSI sensor entity."""
 
     def __init__(
@@ -295,7 +295,7 @@ class WiserWlanRSSISensorEntity(WiserGatewayEntity, SensorEntity):
         self._attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS_MILLIWATT
 
 
-class WiserSocketsSensorEntity(WiserGatewayEntity, SensorEntity):
+class WiserSocketsSensorEntity(WiserSystemHealthEntity, SensorEntity):
     """A Wiser µGateway Sockets sensor entity."""
 
     def __init__(
@@ -314,7 +314,7 @@ class WiserSocketsSensorEntity(WiserGatewayEntity, SensorEntity):
         self._attr_icon = "mdi:arrow-expand-horizontal"
 
 
-class WiserRebootCauseTextEntity(WiserGatewayEntity, TextEntity):
+class WiserRebootCauseTextEntity(WiserSystemHealthEntity, TextEntity):
     """A Wiser µGateway Reboot Cause text entity."""
 
     def __init__(
