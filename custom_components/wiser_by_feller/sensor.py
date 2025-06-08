@@ -96,7 +96,6 @@ async def async_setup_entry(
         elif isinstance(sensor, Hail):
             entities.append(WiserHailSensorEntity(coordinator, device, room, sensor))
 
-    gateway_serial = coordinator.gateway.combined_serial_number
     gateway_sensor_map = {
         "uptime": (WiserUptimeSensorEntity, int, "Uptime", False),
         "flash_free": (WiserDataSensorEntity, int, "Flash Free", True),
@@ -119,7 +118,6 @@ async def async_setup_entry(
             entities.append(
                 entity_class(
                     coordinator,
-                    gateway_serial,
                     entity_name,
                     value_type(value),
                     key,
@@ -138,26 +136,37 @@ class WiserSystemHealthEntity(CoordinatorEntity):
     def __init__(
         self,
         coordinator: WiserCoordinator,
-        gateway_serial: str,
         name: str,
         value: float,
         key: str,
         enabled: bool = True,
     ) -> None:
         """Set up the entity."""
-        (super().__init__(coordinator),)
-        self._slugify_gateway_serial = slugify(gateway_serial, separator="_")
+        self.coordinator = coordinator
+        if self.coordinator.gateway is None:
+            _LOGGER.warning(
+                "The gateway device is not recognized in the coordinator. This can happen if the "
+                '"Allow missing µGateway data" option is set and leads to non-unique system health sensor identifiers. '
+                "Please fix the root cause and disable the option."
+            )
+
+        gateway = (
+            self.coordinator.gateway.combined_serial_number
+            if self.coordinator.gateway is not None
+            else ""
+        )
+
         self._key = key
-        self.coordinator_context = f"{self._slugify_gateway_serial}_{self._key}"
-        self._attr_raw_unique_id = f"{self._slugify_gateway_serial}"
-        self._attr_unique_id = f"{self._attr_raw_unique_id}_{self._key}"
+        self._slugify_gateway = slugify(gateway, separator="_")
+        self.coordinator_context = f"{self._slugify_gateway}_{self._key}"
+        self._attr_unique_id = f"{self._slugify_gateway}_{self._key}"
         self._attr_name = name
         self._attr_translation_key = self._key
         self._attr_has_entity_name = True
         self._attr_device_class = None
         self._attr_entity_category = None
         self._attr_entity_registry_enabled_default = enabled
-        self.device_info = DeviceInfo(identifiers={(DOMAIN, gateway_serial)})
+        self.device_info = DeviceInfo(identifiers={(DOMAIN, gateway)})
         self._value = value
 
     @property
@@ -178,14 +187,13 @@ class WiserUptimeSensorEntity(WiserSystemHealthEntity, SensorEntity):
     def __init__(
         self,
         coordinator: WiserCoordinator,
-        gateway_serial: str,
         name: str,
         value: int,
         key: str,
         enabled: bool,
     ) -> None:
         """Set up the entity."""
-        (super().__init__(coordinator, gateway_serial, name, value, key, enabled),)
+        (super().__init__(coordinator, name, value, key, enabled),)
         self._attr_device_class = SensorDeviceClass.TIMESTAMP
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:clock-start"
@@ -203,14 +211,13 @@ class WiserDataSensorEntity(WiserSystemHealthEntity, SensorEntity):
     def __init__(
         self,
         coordinator: WiserCoordinator,
-        gateway_serial: str,
         name: str,
         value: int,
         key: str,
         enabled: bool,
     ) -> None:
         """Set up the entity."""
-        (super().__init__(coordinator, gateway_serial, name, value, key, enabled),)
+        (super().__init__(coordinator, name, value, key, enabled),)
         self._attr_device_class = SensorDeviceClass.DATA_SIZE
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_native_unit_of_measurement = UnitOfInformation.BYTES
@@ -224,14 +231,13 @@ class WiserCoreTempSensorEntity(WiserSystemHealthEntity, SensorEntity):
     def __init__(
         self,
         coordinator: WiserCoordinator,
-        gateway_serial: str,
         name: str,
         value: float,
         key: str,
         enabled: bool,
     ) -> None:
         """Set up the entity."""
-        (super().__init__(coordinator, gateway_serial, name, value, key, enabled),)
+        (super().__init__(coordinator, name, value, key, enabled),)
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -244,14 +250,13 @@ class WiserWlanResetsSensorEntity(WiserSystemHealthEntity, SensorEntity):
     def __init__(
         self,
         coordinator: WiserCoordinator,
-        gateway_serial: str,
         name: str,
         value: int,
         key: str,
         enabled: bool,
     ) -> None:
         """Set up the entity."""
-        (super().__init__(coordinator, gateway_serial, name, value, key, enabled),)
+        (super().__init__(coordinator, name, value, key, enabled),)
         self._attr_device_class = SensorStateClass.TOTAL_INCREASING
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:wifi-alert"
@@ -263,14 +268,13 @@ class WiserMaxTasksSensorEntity(WiserSystemHealthEntity, SensorEntity):
     def __init__(
         self,
         coordinator: WiserCoordinator,
-        gateway_serial: str,
         name: str,
         value: int,
         key: str,
         enabled: bool,
     ) -> None:
         """Set up the entity."""
-        (super().__init__(coordinator, gateway_serial, name, value, key, enabled),)
+        (super().__init__(coordinator, name, value, key, enabled),)
         self._attr_device_class = SensorStateClass.TOTAL_INCREASING
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:list-box-outline"
@@ -282,14 +286,13 @@ class WiserWlanRSSISensorEntity(WiserSystemHealthEntity, SensorEntity):
     def __init__(
         self,
         coordinator: WiserCoordinator,
-        gateway_serial: str,
         name: str,
         value: int,
         key: str,
         enabled: bool,
     ) -> None:
         """Set up the entity."""
-        (super().__init__(coordinator, gateway_serial, name, value, key, enabled),)
+        (super().__init__(coordinator, name, value, key, enabled),)
         self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS_MILLIWATT
@@ -301,14 +304,13 @@ class WiserSocketsSensorEntity(WiserSystemHealthEntity, SensorEntity):
     def __init__(
         self,
         coordinator: WiserCoordinator,
-        gateway_serial: str,
         name: str,
         value: int,
         key: str,
         enabled: bool,
     ) -> None:
         """Set up the entity."""
-        (super().__init__(coordinator, gateway_serial, name, value, key, enabled),)
+        (super().__init__(coordinator, name, value, key, enabled),)
         self._attr_device_class = SensorStateClass.TOTAL_INCREASING
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:arrow-expand-horizontal"
@@ -320,14 +322,13 @@ class WiserRebootCauseTextEntity(WiserSystemHealthEntity, TextEntity):
     def __init__(
         self,
         coordinator: WiserCoordinator,
-        gateway_serial: str,
         name: str,
         value: str,
         key: str,
         enabled: bool,
     ) -> None:
         """Set up the entity."""
-        (super().__init__(coordinator, gateway_serial, name, value, key, enabled),)
+        (super().__init__(coordinator, name, value, key, enabled),)
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:restart-alert"
 
