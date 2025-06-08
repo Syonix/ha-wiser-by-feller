@@ -30,7 +30,12 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, MANUFACTURER, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
+from .const import (
+    DOMAIN,
+    GATEWAY_NAME,
+    MANUFACTURER,
+    OPTIONS_ALLOW_MISSING_GATEWAY_DATA,
+)
 from .exceptions import (
     InvalidEntityChannelSpecified,
     InvalidEntitySpecified,
@@ -77,6 +82,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         self._valid_unique_ids = []
         self._scenes = None
         self._sensors = None
+        self._system_health = None
         self._hvac_groups = None
         self._assigned_thermostats = {}
         self._jobs = None
@@ -137,7 +143,6 @@ class WiserCoordinator(DataUpdateCoordinator):
     @property
     def gateway_info(self) -> dict | None:
         """A dict debug information of the Wiser device that acts as µGateway in the connected network."""
-
         return self._gateway_info
 
     @property
@@ -149,6 +154,11 @@ class WiserCoordinator(DataUpdateCoordinator):
     def rssi(self) -> int | None:
         """The RSSI of the connected µGateway."""
         return self._rssi
+
+    @property
+    def system_health(self) -> dict | None:
+        """A dict containing system health information of the connected µGateway."""
+        return self._system_health
 
     @property
     def api_host(self) -> str:
@@ -204,7 +214,7 @@ class WiserCoordinator(DataUpdateCoordinator):
             identifiers={(DOMAIN, self._gateway.combined_serial_number)},
             manufacturer=MANUFACTURER,
             model=f"{self._gateway.c_name}",
-            name="µGateway",
+            name=GATEWAY_NAME,
             sw_version=f"{self._gateway_info['sw']}",
             hw_version=f"{info['generation']} ({self._gateway.c['comm_ref']})",
         )
@@ -258,6 +268,7 @@ class WiserCoordinator(DataUpdateCoordinator):
 
                 await self.async_update_valid_unique_ids()
                 await self.async_update_states()
+                await self.async_system_health()
                 await self.async_update_rssi()
         except AuthorizationFailed as err:
             # Raising ConfigEntryAuthFailed will cancel future updates
@@ -414,6 +425,10 @@ class WiserCoordinator(DataUpdateCoordinator):
         """Update Wiser rssi from µGateway."""
         self._rssi = await self._api.async_get_net_rssi()
 
+    async def async_system_health(self) -> None:
+        """Update Wiser system health from µGateway."""
+        self._system_health = await self._api.async_get_system_health()
+
     async def async_is_onoff_impulse_load(self, load: Load) -> bool:
         """Check if on/off load is of subtype impulse.
 
@@ -427,5 +442,3 @@ class WiserCoordinator(DataUpdateCoordinator):
         delay = config["outputs"][load.channel]["delay_ms"]
 
         return delay < 10000
-
-    # TODO: use async_get_system_health and add uptime, sockets, reboot_cause (?), mem_{size,free} (?), flash_{size,free} (?), wlan_resets
