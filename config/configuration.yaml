@@ -10,3 +10,14 @@ logger:
   default: info
   logs:
     custom_components.wiser_by_feller: debug
+
+panel_custom:
+  - name: logs
+    sidebar_title: Logs
+    sidebar_icon: mdi:math-log
+    url_path: config/logs
+    js_url: /api/hassio/app/entrypoint.js
+    embed_iframe: true
+    require_admin: true
+    config:
+      ingress: core_configurator
