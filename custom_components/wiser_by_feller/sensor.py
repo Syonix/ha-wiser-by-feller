@@ -5,16 +5,7 @@ from __future__ import annotations
 import datetime as dt
 import logging
 
-from aiowiserbyfeller import (
-    Brightness,
-    Device,
-    Hail,
-    Load,
-    Rain,
-    Sensor,
-    Temperature,
-    Wind,
-)
+from aiowiserbyfeller import Brightness, Device, Hail, Rain, Sensor, Temperature, Wind
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.sensor import (
     SensorDeviceClass,
