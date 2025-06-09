@@ -145,7 +145,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         return self._gateway_info
 
     @property
-    def rooms(self) -> list[dict] | None:
+    def rooms(self) -> dict[int, dict] | None:
         """A list of rooms configured in the Wiser by Feller ecosystem (Wiser eSetup app or Wiser Home app)."""
         return self._rooms
 
