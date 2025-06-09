@@ -95,10 +95,6 @@ async def async_setup_entry(
             entities.append(WiserRainSensorEntity(coordinator, device, room, sensor))
         elif isinstance(sensor, Hail):
             entities.append(WiserHailSensorEntity(coordinator, device, room, sensor))
-        elif isinstance(sensor, Rain):
-            entities.append(WiserRainSensorEntity(coordinator, device, room, sensor))
-        elif isinstance(sensor, Hail):
-            entities.append(WiserHailSensorEntity(coordinator, device, room, sensor))
 
     gateway_serial = coordinator.gateway.combined_serial_number
     gateway_sensor_map = {
