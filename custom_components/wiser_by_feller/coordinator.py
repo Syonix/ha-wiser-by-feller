@@ -30,12 +30,7 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import (
-    DOMAIN,
-    GATEWAY_NAME,
-    MANUFACTURER,
-    OPTIONS_ALLOW_MISSING_GATEWAY_DATA,
-)
+from .const import DOMAIN, MANUFACTURER, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
 from .exceptions import (
     InvalidEntityChannelSpecified,
     InvalidEntitySpecified,
@@ -208,7 +203,7 @@ class WiserCoordinator(DataUpdateCoordinator):
             identifiers={(DOMAIN, self._gateway.combined_serial_number)},
             manufacturer=MANUFACTURER,
             model=f"{self._gateway.c_name}",
-            name=GATEWAY_NAME,
+            name=f"{self.config_entry.title} µGateway",
             sw_version=f"{self._gateway_info['sw']}",
             hw_version=f"{info['generation']} ({self._gateway.c['comm_ref']})",
         )
