@@ -257,7 +257,7 @@ class WiserCoordinator(DataUpdateCoordinator):
 
                 await self.async_update_valid_unique_ids()
                 await self.async_update_states()
-                await self.async_system_health()
+                await self.async_update_system_health()
         except AuthorizationFailed as err:
             # Raising ConfigEntryAuthFailed will cancel future updates
             # and start a config flow with SOURCE_REAUTH (async_step_reauth)
@@ -409,7 +409,7 @@ class WiserCoordinator(DataUpdateCoordinator):
                 group.id
             )
 
-    async def async_system_health(self) -> None:
+    async def async_update_system_health(self) -> None:
         """Update Wiser system health from µGateway."""
         self._system_health = await self._api.async_get_system_health()
 
