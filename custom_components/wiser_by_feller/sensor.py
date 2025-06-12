@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import datetime as dt
+from datetime import datetime
 import logging
 
 from aiowiserbyfeller import Brightness, Device, Hail, Rain, Sensor, Temperature, Wind
@@ -190,10 +190,10 @@ class WiserUptimeSensorEntity(WiserSystemHealthEntity, SensorEntity):
         self._attr_icon = "mdi:clock-start"
 
     @property
-    def native_value(self) -> int | None:
+    def native_value(self) -> datetime | None:
         """Return the Uptime value."""
-        self.offset = dt.timedelta(seconds=self._value)
-        self._date_since_boot = dt_util.utcnow() - self.offset
+        self.offset = dt_util.dt.timedelta(seconds=self._value)
+        return dt_util.utcnow() - self.offset
 
 
 class WiserDataSensorEntity(WiserSystemHealthEntity, SensorEntity):
