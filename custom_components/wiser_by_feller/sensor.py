@@ -129,7 +129,7 @@ class WiserSystemHealthEntity(CoordinatorEntity):
         self,
         coordinator: WiserCoordinator,
         name: str,
-        value: float,
+        value: float | str,
         key: str,
         enabled: bool = True,
     ) -> None:
@@ -263,7 +263,7 @@ class WiserMaxTasksSensorEntity(WiserSystemHealthEntity, SensorEntity):
     ) -> None:
         """Set up the entity."""
         super().__init__(coordinator, name, value, key, enabled)
-        self._attr_device_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         self._attr_icon = "mdi:list-box-outline"
 
 
@@ -297,7 +297,7 @@ class WiserSocketsSensorEntity(WiserSystemHealthEntity, SensorEntity):
     ) -> None:
         """Set up the entity."""
         super().__init__(coordinator, name, value, key, enabled)
-        self._attr_device_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
         self._attr_icon = "mdi:arrow-expand-horizontal"
 
 
