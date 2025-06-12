@@ -102,19 +102,20 @@ async def async_setup_entry(
     }
 
     for key, value in coordinator.system_health.items():
-        entity_class, value_type, entity_name, enabled = gateway_sensor_map.get(
-            key, (None, None, None)
-        )
-        if entity_class:
-            entities.append(
-                entity_class(
-                    coordinator,
-                    entity_name,
-                    value_type(value),
-                    key,
-                    enabled,
-                )
+        if key not in gateway_sensor_map:
+            _LOGGER.debug("Unknown system health item: %s", key)
+            continue
+
+        entity_class, value_type, entity_name, enabled = gateway_sensor_map[key]
+        entities.append(
+            entity_class(
+                coordinator,
+                entity_name,
+                value_type(value),
+                key,
+                enabled,
             )
+        )
 
     if entities:
         async_add_entities(entities)
@@ -122,7 +123,7 @@ async def async_setup_entry(
 
 # TODO: Is this compatible with iot_class local_push?
 class WiserSystemHealthEntity(CoordinatorEntity):
-    """A Wiser µGateway sensor entity."""
+    """A Wiser µGateway system health sensor entity."""
 
     def __init__(
         self,
