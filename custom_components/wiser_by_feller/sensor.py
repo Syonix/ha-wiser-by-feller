@@ -155,7 +155,7 @@ class WiserSystemHealthEntity(CoordinatorEntity):
         self._attr_name = name
         self._attr_translation_key = self._key
         self._attr_has_entity_name = True
-        self._attr_device_class = None
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_entity_category = None
         self._attr_entity_registry_enabled_default = enabled
         self.device_info = DeviceInfo(identifiers={(DOMAIN, gateway)})
@@ -187,7 +187,6 @@ class WiserUptimeSensorEntity(WiserSystemHealthEntity, SensorEntity):
         """Set up the entity."""
         super().__init__(coordinator, name, value, key, enabled)
         self._attr_device_class = SensorDeviceClass.TIMESTAMP
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:clock-start"
 
     @property
@@ -211,7 +210,6 @@ class WiserDataSensorEntity(WiserSystemHealthEntity, SensorEntity):
         """Set up the entity."""
         super().__init__(coordinator, name, value, key, enabled)
         self._attr_device_class = SensorDeviceClass.DATA_SIZE
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_native_unit_of_measurement = UnitOfInformation.BYTES
         self._attr_suggested_unit_of_measurement = UnitOfInformation.KIBIBYTES
         self._attr_suggested_display_precision = 0
@@ -231,7 +229,6 @@ class WiserCoreTempSensorEntity(WiserSystemHealthEntity, SensorEntity):
         """Set up the entity."""
         super().__init__(coordinator, name, value, key, enabled)
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_suggested_display_precision = 1
 
@@ -250,7 +247,6 @@ class WiserWlanResetsSensorEntity(WiserSystemHealthEntity, SensorEntity):
         """Set up the entity."""
         super().__init__(coordinator, name, value, key, enabled)
         self._attr_device_class = SensorStateClass.TOTAL_INCREASING
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:wifi-alert"
 
 
@@ -268,7 +264,6 @@ class WiserMaxTasksSensorEntity(WiserSystemHealthEntity, SensorEntity):
         """Set up the entity."""
         super().__init__(coordinator, name, value, key, enabled)
         self._attr_device_class = SensorStateClass.TOTAL_INCREASING
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:list-box-outline"
 
 
@@ -286,7 +281,6 @@ class WiserWlanRSSISensorEntity(WiserSystemHealthEntity, SensorEntity):
         """Set up the entity."""
         super().__init__(coordinator, name, value, key, enabled)
         self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS_MILLIWATT
 
 
@@ -304,7 +298,6 @@ class WiserSocketsSensorEntity(WiserSystemHealthEntity, SensorEntity):
         """Set up the entity."""
         super().__init__(coordinator, name, value, key, enabled)
         self._attr_device_class = SensorStateClass.TOTAL_INCREASING
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:arrow-expand-horizontal"
 
 
@@ -321,7 +314,6 @@ class WiserRebootCauseTextEntity(WiserSystemHealthEntity, TextEntity):
     ) -> None:
         """Set up the entity."""
         super().__init__(coordinator, name, value, key, enabled)
-        self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_icon = "mdi:restart-alert"
 
 
