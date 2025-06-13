@@ -65,7 +65,7 @@ class WiserSceneEntity(HaScene):
 
         self._attr_unique_id = f"{gateway}_scene_{scene.id}"
         self._attr_name = scene.name
-        self.device_info = DeviceInfo(identifiers={(DOMAIN, gateway)})
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, gateway)})
         self._scene = scene
 
     async def async_activate(self, **kwargs: Any) -> None:

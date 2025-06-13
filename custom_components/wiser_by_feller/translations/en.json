@@ -82,6 +82,39 @@
           "on": "Rain detected",
           "off": "No rain"
         }
+      },
+      "uptime": {
+        "name": "Uptime"
+      },
+      "flash_free": {
+        "name": "Flash Free"
+      },
+      "flash_size": {
+        "name": "Flash Size"
+      },
+      "mem_size": {
+        "name": "Memory Size"
+      },
+      "mem_free": {
+        "name": "Memory Free"
+      },
+      "core_temp": {
+        "name": "Core Temperature"
+      },
+      "wlan_resets": {
+        "name": "WLAN Resets"
+      },
+      "max_tasks": {
+        "name": "Max Tasks"
+      },
+      "wlan_rssi": {
+        "name": "WLAN RSSI"
+      },
+      "reboot_cause": {
+        "name": "Reboot Cause"
+      },
+      "sockets": {
+        "name": "Sockets"
       }
     }
   },
