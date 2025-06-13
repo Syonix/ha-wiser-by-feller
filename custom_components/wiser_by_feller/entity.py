@@ -84,7 +84,7 @@ class WiserEntity(CoordinatorEntity):
         area = None if self._room is None else self._room["name"]
         via = (
             (DOMAIN, self.coordinator.gateway.combined_serial_number)
-            if self.coordinator.gateway is not None and not self._is_gateway
+            if self.coordinator.gateway is not None
             else None
         )
 
