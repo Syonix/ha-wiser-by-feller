@@ -258,6 +258,7 @@ class WiserCoordinator(DataUpdateCoordinator):
                 await self.async_update_valid_unique_ids()
                 await self.async_update_states()
                 await self.async_update_system_health()
+                await self.async_update_gateway_info()
         except AuthorizationFailed as err:
             # Raising ConfigEntryAuthFailed will cancel future updates
             # and start a config flow with SOURCE_REAUTH (async_step_reauth)
@@ -412,6 +413,10 @@ class WiserCoordinator(DataUpdateCoordinator):
     async def async_update_system_health(self) -> None:
         """Update Wiser system health from µGateway."""
         self._system_health = await self._api.async_get_system_health()
+
+    async def async_update_gateway_info(self) -> None:
+        """Update Wiser gateway info from µGateway."""
+        self._gateway_info = await self._api.async_get_info_debug()
 
     async def async_is_onoff_impulse_load(self, load: Load) -> bool:
         """Check if on/off load is of subtype impulse.

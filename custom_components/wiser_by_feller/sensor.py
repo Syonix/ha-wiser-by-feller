@@ -135,7 +135,10 @@ async def async_setup_entry(
 
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    entities = []
+    entities = [
+        WiserSystemHealthEntity(coordinator, description) for description in GW_SENSORS
+    ]
+
     for load in coordinator.loads.values():
         load.raw_state = coordinator.states[load.id]
         device = coordinator.devices[load.device]
@@ -176,9 +179,6 @@ async def async_setup_entry(
             entities.append(WiserRainSensorEntity(coordinator, device, room, sensor))
         elif isinstance(sensor, Hail):
             entities.append(WiserHailSensorEntity(coordinator, device, room, sensor))
-
-    for description in GW_SENSORS:
-        entities.append(WiserSystemHealthEntity(coordinator, description))  # noqa: PERF401
 
     if entities:
         async_add_entities(entities)
