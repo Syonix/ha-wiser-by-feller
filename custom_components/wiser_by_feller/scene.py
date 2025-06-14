@@ -60,7 +60,7 @@ class WiserSceneEntity(HaScene):
         gateway = (
             self.coordinator.gateway.combined_serial_number
             if self.coordinator.gateway is not None
-            else ""
+            else coordinator.config_entry.title
         )
 
         self._attr_unique_id = f"{gateway}_scene_{scene.id}"

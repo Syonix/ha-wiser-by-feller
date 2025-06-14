@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import logging
+
 from aiowiserbyfeller import Auth, WiserByFellerAPI
 from aiowiserbyfeller.util import parse_wiser_device_ref_c
 from homeassistant.config_entries import ConfigEntry
@@ -12,6 +14,8 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import WiserCoordinator
+
+_LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
@@ -62,12 +66,25 @@ async def async_setup_gateway(
     hass: HomeAssistant, entry: ConfigEntry, coordinator: WiserCoordinator
 ) -> None:
     """Set up the gateway device."""
+    if coordinator.gateway is None:
+        _LOGGER.warning(
+            "The gateway device is not recognized in the coordinator. This can happen if the "
+            '"Allow missing µGateway data" option is set and leads to non-unique scene identifiers. '
+            "Please fix the root cause and disable the option."
+        )
+
+    gateway = (
+        coordinator.gateway.combined_serial_number
+        if coordinator.gateway is not None
+        else coordinator.config_entry.title
+    )
     info = parse_wiser_device_ref_c(coordinator.gateway.c["comm_ref"])
+
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
         configuration_url=f"http://{coordinator.api_host}",
-        identifiers={(DOMAIN, coordinator.gateway.combined_serial_number)},
+        identifiers={(DOMAIN, gateway)},
         manufacturer=MANUFACTURER,
         model=f"{coordinator.gateway.c_name}",
         name=f"{coordinator.config_entry.title} µGateway",
