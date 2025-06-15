@@ -79,7 +79,20 @@ async def async_setup_gateway(
         if coordinator.gateway is not None
         else coordinator.config_entry.title
     )
-    info = parse_wiser_device_ref_c(coordinator.gateway.c["comm_ref"])
+
+    generation = (
+        parse_wiser_device_ref_c(coordinator.gateway.c["comm_ref"])["generation"]
+        if coordinator.gateway is not None
+        else "?"
+    )
+
+    area = None
+    for output in coordinator.gateway.outputs:
+        if "load" not in output:
+            continue
+        load = coordinator.loads[output["load"]]
+        if load.room is not None and load.room in coordinator.rooms:
+            area = coordinator.rooms[load.room]["name"]
 
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
@@ -90,5 +103,6 @@ async def async_setup_gateway(
         model=f"{coordinator.gateway.c_name}",
         name=f"{coordinator.config_entry.title} µGateway",
         sw_version=f"{coordinator.gateway_info['sw']}",
-        hw_version=f"{info['generation']} ({coordinator.gateway.c['comm_ref']})",
+        hw_version=f"{generation} ({coordinator.gateway.c['comm_ref']})",
+        suggested_area=area,
     )
