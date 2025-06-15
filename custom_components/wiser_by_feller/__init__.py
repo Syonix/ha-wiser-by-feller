@@ -63,7 +63,9 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 
 async def async_setup_gateway(
-    hass: HomeAssistant, entry: ConfigEntry, coordinator: WiserCoordinator
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coordinator: WiserCoordinator,
 ) -> None:
     """Set up the gateway device."""
     if coordinator.gateway is None:
