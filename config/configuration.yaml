@@ -1,6 +1,10 @@
 # https://www.home-assistant.io/integrations/default_config/
 default_config:
 
+go2rtc:
+  url: http://localhost:1984 # Removes errors in logs
+
+
 # https://www.home-assistant.io/integrations/homeassistant/
 homeassistant:
   debug: true
@@ -11,6 +15,7 @@ logger:
   logs:
     custom_components.wiser_by_feller: debug
 
+# Adds Log Viewer to the sidebar
 panel_custom:
   - name: logs
     sidebar_title: Logs
