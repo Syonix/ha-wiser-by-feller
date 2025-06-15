@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from aiowiserbyfeller import Device, Load
-from aiowiserbyfeller.util import parse_wiser_device_ref_c
 from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -29,8 +28,6 @@ class WiserEntity(CoordinatorEntity):
 
         if device is not None:
             # Support entities without Wiser device for HVAC groups.
-            info = parse_wiser_device_ref_c(device.c["comm_ref"])
-
             self.coordinator_context = (
                 device.id if load is None else load.id
             )  # TODO: Suboptimal
@@ -38,7 +35,6 @@ class WiserEntity(CoordinatorEntity):
             self._attr_raw_unique_id = get_unique_id(device, load)
             self._attr_unique_id = self._attr_raw_unique_id
             self._device_name = resolve_device_name(device, room, load)
-            self._is_gateway = info["wlan"]
 
         self.coordinator = coordinator
         self._attr_has_entity_name = True
@@ -80,7 +76,6 @@ class WiserEntity(CoordinatorEntity):
             if self._device.c["fw_version"] != self._device.a["fw_version"]
             else self._device.a["fw_version"]
         )
-        url = f"http://{self.coordinator.api_host}" if self._is_gateway else None
         area = None if self._room is None else self._room["name"]
         via = (
             (DOMAIN, self.coordinator.gateway.combined_serial_number)
@@ -102,7 +97,6 @@ class WiserEntity(CoordinatorEntity):
             sw_version=firmware,
             serial_number=self._device.combined_serial_number,
             suggested_area=area,
-            configuration_url=url,
             via_device=via,
         )
 
