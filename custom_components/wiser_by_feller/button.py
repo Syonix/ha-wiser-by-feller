@@ -83,6 +83,7 @@ class WiserPingEntity(WiserEntity, ButtonEntity):
     ) -> None:
         """Set up wiser ping button entity."""
         super().__init__(coordinator, load, device, room)
+        del self._attr_name
         self._attr_unique_id = f"{self._attr_raw_unique_id}_identify"
         self._attr_device_class = ButtonDeviceClass.IDENTIFY
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
