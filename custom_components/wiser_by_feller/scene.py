@@ -9,7 +9,6 @@ from aiowiserbyfeller import Scene
 from homeassistant.components.scene import Scene as HaScene
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import DOMAIN
@@ -65,7 +64,6 @@ class WiserSceneEntity(HaScene):
 
         self._attr_unique_id = f"{gateway}_scene_{scene.id}"
         self._attr_name = scene.name
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, gateway)})
         self._scene = scene
 
     async def async_activate(self, **kwargs: Any) -> None:
