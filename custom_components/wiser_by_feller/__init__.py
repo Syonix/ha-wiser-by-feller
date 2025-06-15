@@ -37,7 +37,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     hass.data[DOMAIN][entry.entry_id] = wiser_coordinator
 
     await wiser_coordinator.async_config_entry_first_refresh()
-    await wiser_coordinator.async_remove_orphan_devices(entry)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     hass.services.async_register(

@@ -24,13 +24,12 @@ from aiowiserbyfeller import (
 from aiowiserbyfeller.const import LOAD_SUBTYPE_ONOFF_DTO, LOAD_TYPE_ONOFF
 import aiowiserbyfeller.errors
 from aiowiserbyfeller.util import parse_wiser_device_ref_c
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
+from .const import OPTIONS_ALLOW_MISSING_GATEWAY_DATA
 from .exceptions import (
     InvalidEntityChannelSpecified,
     InvalidEntitySpecified,
@@ -42,10 +41,7 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def get_unique_id(device: Device, load: Load | None) -> str:
-    """Return a unique id for a given device / load combination.
-
-    Note: Update WiserCoordinator.async_update_valid_unique_ids() after changing this!
-    """
+    """Return a unique id for a given device / load combination."""
     return device.id if load is None else f"{load.device}_{load.channel}"
 
 
@@ -74,7 +70,6 @@ class WiserCoordinator(DataUpdateCoordinator):
         self._states = None
         self._devices = None
         self._device_ids_by_serial = None
-        self._valid_unique_ids = []
         self._scenes = None
         self._sensors = None
         self._hvac_groups = None
@@ -189,18 +184,6 @@ class WiserCoordinator(DataUpdateCoordinator):
         """Device will light up the yellow LEDs of all buttons for a short time."""
         return await self._api.async_ping_device(device_id)
 
-    async def async_remove_orphan_devices(self, entry: ConfigEntry) -> None:
-        """Ensure every device associated with this config entry is still currently present, otherwise remove the device (and thus entities)."""
-
-        registry = dr.async_get(self.hass)
-
-        for device_entry in dr.async_entries_for_config_entry(registry, entry.entry_id):
-            for identifier in device_entry.identifiers:
-                if identifier[0] == DOMAIN and identifier[1] in self._valid_unique_ids:
-                    break
-            else:
-                registry.async_remove_device(device_entry.id)
-
     async def _async_update_data(self) -> None:
         """Fetch data from API endpoint.
 
@@ -232,7 +215,6 @@ class WiserCoordinator(DataUpdateCoordinator):
                 if self._hvac_groups is None:
                     await self.async_update_hvac_groups()
 
-                await self.async_update_valid_unique_ids()
                 await self.async_update_states()
                 await self.async_update_rssi()
         except AuthorizationFailed as err:
@@ -280,22 +262,6 @@ class WiserCoordinator(DataUpdateCoordinator):
     async def async_update_loads(self) -> None:
         """Update Wiser device loads from µGateway."""
         self._loads = {load.id: load for load in await self._api.async_get_used_loads()}
-
-    async def async_update_valid_unique_ids(self) -> None:
-        """Update lookup of valid device unique IDs."""
-        self._valid_unique_ids = []
-        if self.loads is not None:
-            for load in self.loads.values():
-                self._valid_unique_ids.append(f"{load.device}_{load.channel}")
-
-        if self.devices is not None:
-            for device_id in self.devices:
-                self._valid_unique_ids.append(device_id)
-
-        if self.hvac_groups is not None:
-            for group in self.hvac_groups.values():
-                thermostat = self.devices[group.thermostat_ref.unprefixed_address]
-                self._valid_unique_ids.append(f"{thermostat.id}_hvac_group")
 
     async def async_update_devices(self) -> None:
         """Update Wiser devices from µGateway."""
