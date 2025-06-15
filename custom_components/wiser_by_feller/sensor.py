@@ -203,15 +203,14 @@ class WiserSystemHealthEntity(CoordinatorEntity, SensorEntity):
     ) -> None:
         """Set up the entity."""
         super().__init__(coordinator, entity_description)
-        gateway = coordinator.gateway.combined_serial_number
-        self.gateway = gateway
-        slugify_gateway = slugify(f"{gateway}", separator="_")
+        self.gateway = coordinator.gateway.combined_serial_number
+        slugify_gateway = slugify(f"{self.gateway}", separator="_")
         self.entity_description = entity_description
         self._attr_translation_key = entity_description.key
         self._attr_unique_id = f"{slugify_gateway}_{entity_description.key}"
 
         self.coordinator_context = f"{slugify_gateway}_{entity_description.key}"
-        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, gateway)})
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, self.gateway)})
         self._attr_native_value = self.entity_description.value_fn(
             self.coordinator.system_health
         )
