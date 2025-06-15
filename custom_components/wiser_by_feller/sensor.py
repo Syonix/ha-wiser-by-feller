@@ -49,6 +49,7 @@ class GatewaySensorEntityDescription(SensorEntityDescription):
 GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
     GatewaySensorEntityDescription(
         key="uptime",
+        entity_registry_enabled_default=False,
         translation_key="uptime",
         device_class=SensorDeviceClass.TIMESTAMP,
         icon="mdi:clock-start",
@@ -65,6 +66,7 @@ GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
     ),
     GatewaySensorEntityDescription(
         key="flash_size",
+        entity_registry_enabled_default=False,
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.KIBIBYTES,
@@ -73,6 +75,7 @@ GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
     ),
     GatewaySensorEntityDescription(
         key="mem_size",
+        entity_registry_enabled_default=False,
         device_class=SensorDeviceClass.DATA_SIZE,
         native_unit_of_measurement=UnitOfInformation.BYTES,
         suggested_unit_of_measurement=UnitOfInformation.KIBIBYTES,
@@ -108,6 +111,7 @@ GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
     ),
     GatewaySensorEntityDescription(
         key="wlan_rssi",
+        entity_registry_enabled_default=False,
         device_class=SensorDeviceClass.SIGNAL_STRENGTH,
         native_unit_of_measurement=SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
         value_fn=lambda data: data["wlan_rssi"],
@@ -185,13 +189,12 @@ async def async_setup_entry(
 
 
 # TODO: Is this compatible with iot_class local_push?
-class WiserSystemHealthEntity(SensorEntity, CoordinatorEntity):
+class WiserSystemHealthEntity(CoordinatorEntity, SensorEntity):
     """A Wiser µGateway system health sensor entity."""
 
     entity_description: GatewaySensorEntityDescription
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_has_entity_name = True
-    disabled_by = None
 
     def __init__(
         self,
