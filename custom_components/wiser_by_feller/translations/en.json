@@ -83,8 +83,8 @@
           "off": "No rain"
         }
       },
-      "uptime": {
-        "name": "Uptime"
+      "last_reboot": {
+        "name": "Last Reboot"
       },
       "flash_free": {
         "name": "Flash Free"

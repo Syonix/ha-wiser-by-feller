@@ -19,6 +19,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     LIGHT_LUX,
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
+    STATE_UNAVAILABLE,
     EntityCategory,
     UnitOfInformation,
     UnitOfSpeed,
@@ -37,6 +38,7 @@ from .coordinator import WiserCoordinator
 from .entity import WiserEntity
 
 _LOGGER = logging.getLogger(__name__)
+RESTART_DELTA_THRESHOLD = 120
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -47,15 +49,6 @@ class GatewaySensorEntityDescription(SensorEntityDescription):
 
 
 GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
-    GatewaySensorEntityDescription(
-        key="uptime",
-        entity_registry_enabled_default=False,
-        translation_key="uptime",
-        device_class=SensorDeviceClass.TIMESTAMP,
-        icon="mdi:clock-start",
-        value_fn=lambda data: dt_util.utcnow()
-        - dt_util.dt.timedelta(seconds=data["uptime"]),
-    ),
     GatewaySensorEntityDescription(
         key="flash_free",
         device_class=SensorDeviceClass.DATA_SIZE,
@@ -143,10 +136,7 @@ async def async_setup_entry(
         WiserSystemHealthEntity(coordinator, description) for description in GW_SENSORS
     ]
 
-    for load in coordinator.loads.values():
-        load.raw_state = coordinator.states[load.id]
-        device = coordinator.devices[load.device]
-        room = coordinator.rooms[load.room] if load.room is not None else None
+    entities.append(WiserLastRebootEntity(coordinator))
 
     for sensor in coordinator.sensors.values():
         device = coordinator.devices[sensor.device]
@@ -222,6 +212,57 @@ class WiserSystemHealthEntity(CoordinatorEntity, SensorEntity):
         self._attr_native_value = self.entity_description.value_fn(
             self.coordinator.system_health
         )
+
+
+class WiserLastRebootEntity(CoordinatorEntity, SensorEntity):
+    """A Wiser µGateway system health sensor entity to return the last reboot."""
+
+    def __init__(self, coordinator: WiserCoordinator) -> None:
+        """Set up the entity."""
+        super().__init__(coordinator)
+        self.gateway = coordinator.gateway.combined_serial_number
+        slugify_gateway = slugify(f"{self.gateway}", separator="_")
+        self._attr_translation_key = "last_reboot"
+        self._attr_unique_id = self.coordinator_context = (
+            f"{slugify_gateway}_last_reboot"
+        )
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, self.gateway)})
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        self._attr_has_entity_name = True
+        self._attr_icon = "mdi:clock-start"
+
+    @property
+    def native_value(self) -> datetime:
+        """Return the value reported by the sensor.
+
+        The API returns seconds since reboot. If we ingest that in HA, we have a state change each second,
+        which is not ideal. Therefore, we calculate the timestamp of the last reboot. We return the new value only,
+        if it differs more than the configured threshold.
+        """
+        new_value = dt_util.utcnow() - dt_util.dt.timedelta(
+            seconds=self.coordinator.system_health["uptime"]
+        )
+
+        if self.hass:
+            current = self.hass.states.get(self.entity_id)
+            if current and current.state not in (None, STATE_UNAVAILABLE):
+                try:
+                    current_value = datetime.fromisoformat(current.state)
+                    if (
+                        abs((current_value - new_value).total_seconds())
+                        < RESTART_DELTA_THRESHOLD
+                    ):
+                        return current_value
+                except (ValueError, TypeError):
+                    pass
+
+        return new_value
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        super()._handle_coordinator_update()
 
 
 class WiserSensorEntity(WiserEntity):
