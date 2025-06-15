@@ -46,7 +46,4 @@
             ]
         }
     },
-    "runArgs": [
-        "--network=host"
-    ]
 }
