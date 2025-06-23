@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "Connect Wiser by Feller \u00b5Gateway",
-        "description": "Enter the IP address of your \u00b5Gateway and click submit. The buttons should start to flash pink and purple. Press any of the flashing buttons on the \u00b5Gateway within 30 seconds to connect your Home Assistant instance.",
+        "description": "Enter the IP address of your \u00b5Gateway and click submit. The buttons should start to flash pink and purple. Press any of the flashing buttons on the \u00b5Gateway within 30 seconds to connect your Home Assistant instance. After that, depending on the amount and generation of devices in your Wiser network, the initial setup can take up to two minutes.",
         "data": {
           "host": "Host",
           "username": "Username",
