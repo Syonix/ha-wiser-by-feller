@@ -51,7 +51,9 @@ async def async_setup_entry(
 
         entities.append(WiserPingEntity(coordinator, None, device, None))
 
-    for group in coordinator.hvac_groups.values():
+    for group in (
+        coordinator.hvac_groups.values() if coordinator.hvac_groups is not None else []
+    ):
         if group.thermostat_ref is None:
             continue
 

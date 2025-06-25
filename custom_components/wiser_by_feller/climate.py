@@ -48,7 +48,9 @@ async def async_setup_entry(
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
     entities = []
-    for hvac_group in coordinator.hvac_groups.values():
+    for hvac_group in (
+        coordinator.hvac_groups.values() if coordinator.hvac_groups is not None else []
+    ):
         if hvac_group.thermostat_ref is None:
             continue
 

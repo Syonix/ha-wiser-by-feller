@@ -149,6 +149,30 @@ class WiserCoordinator(DataUpdateCoordinator):
         """The API host (IP address)."""
         return self._api.auth.host
 
+    @property
+    def gateway_api_major_version(self) -> int | None:
+        """Gateway major version (e.g. 5 for generation A devices)."""
+        return (
+            int(self.gateway_info["api"][:1]) if self.gateway_info is not None else None
+        )
+
+    @property
+    def is_gen_b(self) -> bool:
+        """State if the µGateway is a generation B device (Starting from API version 6)."""
+        version = self.gateway_api_major_version
+
+        return version is not None and version >= 6
+
+    @property
+    def gateway_supports_sensors(self) -> bool:
+        """State if the µGateway supports sensor devices (Gen B)."""
+        return self.is_gen_b
+
+    @property
+    def gateway_supports_hvac_groups(self) -> bool:
+        """State if the µGateway supports HVAC groups (Gen B)."""
+        return self.is_gen_b
+
     async def async_set_status_light(self, call: ServiceCall) -> bool:
         """Set the button illumination for a channel of a specific device."""
 
@@ -200,6 +224,9 @@ class WiserCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("Attempting to update data from µGateway...")
             # Note: asyncio.TimeoutError and aiohttp.ClientError are already
             # handled by the data update coordinator.
+            async with asyncio.timeout(10):
+                await self.async_update_gateway_info()
+
             if self._loads is None:
                 async with asyncio.timeout(10):
                     await self.async_update_loads()
@@ -223,11 +250,11 @@ class WiserCoordinator(DataUpdateCoordinator):
                 async with asyncio.timeout(10):
                     await self.async_update_scenes()
 
-            if self._sensors is None:
+            if self._sensors is None and self.gateway_supports_sensors:
                 async with asyncio.timeout(10):
                     await self.async_update_sensors()
 
-            if self._hvac_groups is None:
+            if self._hvac_groups is None and self.gateway_supports_hvac_groups:
                 async with asyncio.timeout(10):
                     await self.async_update_hvac_groups()
 
@@ -236,9 +263,6 @@ class WiserCoordinator(DataUpdateCoordinator):
 
             async with asyncio.timeout(10):
                 await self.async_update_system_health()
-
-            async with asyncio.timeout(10):
-                await self.async_update_gateway_info()
 
             _LOGGER.debug("Successfully updated data from µGateway.")
 
@@ -342,14 +366,23 @@ class WiserCoordinator(DataUpdateCoordinator):
             load.get("id"): load.get("state")
             for load in await self._api.async_get_loads_state()
         }
-        sensors = {
-            sensor.id: sensor.raw_data for sensor in await self._api.async_get_sensors()
-        }
+        sensors = (
+            {
+                sensor.id: sensor.raw_data
+                for sensor in await self._api.async_get_sensors()
+            }
+            if self.gateway_supports_sensors
+            else {}
+        )
 
-        hvac_groups = {
-            group["id"]: group["state"]
-            for group in await self._api.async_get_hvac_group_states()
-        }
+        hvac_groups = (
+            {
+                group["id"]: group["state"]
+                for group in await self._api.async_get_hvac_group_states()
+            }
+            if self.gateway_supports_hvac_groups
+            else {}
+        )
 
         self._states = loads | sensors | hvac_groups
 
