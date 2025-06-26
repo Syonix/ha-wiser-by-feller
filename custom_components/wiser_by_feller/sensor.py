@@ -46,6 +46,7 @@ class GatewaySensorEntityDescription(SensorEntityDescription):
     """Describes a Wiser µGateway system health sensor entity."""
 
     value_fn: Callable[[dict], datetime | StateType]
+    min_api_version: int = 0
 
 
 GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
