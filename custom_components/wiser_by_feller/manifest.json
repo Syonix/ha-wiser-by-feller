@@ -24,7 +24,7 @@
     "async_timeout",
     "websockets"
   ],
-  "version": "0.2.2",
+  "version": "0.2.3",
   "zeroconf": [
     {
       "type": "_http._tcp.local.",
