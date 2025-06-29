@@ -77,17 +77,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 info = await self.validate_input(self.hass, user_input)
                 await self.async_set_unique_id(info["sn"])
-            except CannotConnect:
-                errors["base"] = "cannot_connect"  # TODO: errors are not translated
+            except CannotConnect as e:
+                err = str(e)
+                errors["base"] = (
+                    "invalid_import_user"
+                    if "not a directory" in err
+                    else "cannot_connect"
+                )
+                _LOGGER.exception("Failed to connect: %s", err)
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
+                _LOGGER.exception("Invalid authentication")
             except AbortFlow:
                 raise
             except Exception as e:
-                errors["base"] = str(e)
-                _LOGGER.exception(
-                    "Unexpected exception: %s", errors["base"], extra={"exception": e}
-                )
+                errors["base"] = "Unexpected error while trying to connect: " + str(e)
+                _LOGGER.exception("Unexpected exception")
             else:
                 return self.async_create_entry(title=info["title"], data=info)
 
@@ -171,7 +176,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 user_input[CONF_USERNAME], user_input[CONF_IMPORTUSER]
             )
         except (AuthorizationFailed, ClientError) as err:
-            raise CannotConnect from err
+            raise CannotConnect(str(err)) from err
 
         return {
             "title": site.get("name", info.get("hostname", "µGateway")),

@@ -40,6 +40,8 @@
     },
     "error": {
       "cannot_connect": "Failed to connect",
+      "invalid_auth": "Authentication failed",
+      "invalid_import_user": "Could not import information from this user. If you never connected to your system, use user 'installer' instead of 'admin'.",
       "discover_timeout": "Unable to discover Wiser \u00b5Gateways",
       "invalid_host": "Invalid hostname or IP address",
       "linking": "Unexpected error",
