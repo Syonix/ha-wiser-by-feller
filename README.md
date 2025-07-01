@@ -107,6 +107,17 @@ Here's a couple of things that are on the roadmap for future releases:
 - Full support for all light types
 - Template for [Micro-Python script](https://github.com/Feller-AG/wiser-tutorial/blob/main/doc/api_scripts.md) to trigger Home Assistant events. This way you could use Wiser scene buttons to trigger actions in Home Assistant.
 
+## 🛟 Frequently asked questions
+### Setup error `Invalid API response: Device 00012345 has an empty field c.comm_ref!`
+This is a known bug in the Wiser µGateway firmware. Please refer to issue #48 and 
+https://github.com/Feller-AG/wiser-api/issues/43 to resolve the issue.
+
+### Setup error `The API returned the error 'no site info'.`
+This happens, if your Wiser system has not been finalized by an electrician / installer. 
+This includes naming all the loads, setting up rooms, assigning loads to rooms, etc. 
+To resolve this, please ask your electrician / installer to finalize the setup using the [Wiser eSetup app](https://www.feller.ch/de/feller-apps), 
+or refer to https://github.com/Feller-AG/wiser-api/issues/49 for more information on using the API to finalize the system.
+
 ## ⚠️ Known issues
 - As of right now, the µGateway API only supports Rest and Websockets. MQTT is implemented, [but only for the proprietary app](https://github.com/Feller-AG/wiser-api/issues/23).
 - While Home Assistant supports updating the state of multiple devices at once, it does not support controlling multiple devices together. Home Assistant scenes will therefore always update one device after another, while Wiser native scenes will update all devices in parallel. For an optimal experience it is therefore recommended to maintain scenes in Wiser and trigger them with Home Assistant.

@@ -5,11 +5,13 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from aiohttp import ClientResponseError, ConnectionTimeoutError
 from aiohttp.client_exceptions import ClientError
 from aiowiserbyfeller import (
     Auth,
     AuthorizationFailed,
     UnauthorizedUser,
+    UnsuccessfulRequest,
     WiserByFellerAPI,
 )
 from homeassistant import config_entries
@@ -77,21 +79,37 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 info = await self.validate_input(self.hass, user_input)
                 await self.async_set_unique_id(info["sn"])
-            except CannotConnect as e:
+            except (CannotConnect, UnsuccessfulRequest) as e:
                 err = str(e)
-                errors["base"] = (
-                    "invalid_import_user"
-                    if "not a directory" in err
-                    else "cannot_connect"
-                )
+
+                if "not a directory" in err:
+                    errors["base"] = "invalid_import_user"
+                elif "no site info" in err:
+                    errors["base"] = "no_site_info"
+                else:
+                    errors["base"] = "cannot_connect"
+
                 _LOGGER.exception("Failed to connect: %s", err)
             except InvalidAuth:
                 errors["base"] = "invalid_auth"
                 _LOGGER.exception("Invalid authentication")
             except AbortFlow:
                 raise
+            except ClientResponseError as e:
+                if e.status == 404:
+                    return self.async_abort(reason="not_wiser_gateway")
+
+                errors["base"] = (
+                    f"Unexpected error while trying to connect: {type(e)} {e}"
+                )
+                _LOGGER.exception("Unexpected exception")
+            except ConnectionTimeoutError:
+                errors["base"] = "connection_timeout"
+                _LOGGER.exception("Connection timeout")
             except Exception as e:
-                errors["base"] = "Unexpected error while trying to connect: " + str(e)
+                errors["base"] = (
+                    f"Unexpected error while trying to connect: {type(e)} {e}"
+                )
                 _LOGGER.exception("Unexpected exception")
             else:
                 return self.async_create_entry(title=info["title"], data=info)
