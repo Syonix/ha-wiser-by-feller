@@ -94,13 +94,13 @@ GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
     ),
     GatewaySensorEntityDescription(
         key="wlan_resets",
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         icon="mdi:wifi-alert",
         value_fn=lambda data: data.get("wlan_resets"),
     ),
     GatewaySensorEntityDescription(
         key="max_tasks",
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         icon="mdi:list-box-outline",
         value_fn=lambda data: data.get("max_tasks"),
     ),
@@ -118,7 +118,7 @@ GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
     ),
     GatewaySensorEntityDescription(
         key="sockets",
-        state_class=SensorStateClass.TOTAL_INCREASING,
+        state_class=SensorStateClass.TOTAL,
         icon="mdi:arrow-expand-horizontal",
         value_fn=lambda data: data.get("sockets"),
     ),
