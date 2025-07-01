@@ -64,45 +64,47 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_setup_gateway(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    coordinator: WiserCoordinator,
+    coord: WiserCoordinator,
 ) -> None:
     """Set up the gateway device."""
-    if coordinator.gateway is None:
+    if coord.gateway is None:
         _LOGGER.warning(
-            "The gateway device is not recognized in the coordinator. This can happen if the "
-            '"Allow missing µGateway data" option is set and leads to non-unique scene identifiers. '
+            "The gateway device is not recognized in the coordinator, which can happen if option "
+            '"Allow missing µGateway data" is enabled. This leads to non-unique scene identifiers! '
             "Please fix the root cause and disable the option."
         )
 
-    gateway = (
-        coordinator.gateway.combined_serial_number
-        if coordinator.gateway is not None
-        else coordinator.config_entry.title
-    )
-
-    generation = (
-        parse_wiser_device_ref_c(coordinator.gateway.c["comm_ref"])["generation"]
-        if coordinator.gateway is not None
-        else "?"
-    )
+        gateway_identifier = coord.config_entry.title
+        name = "Unknown µGateway"
+        model = None
+        sw_version = None
+        hw_version = None
+    else:
+        gateway_identifier = coord.gateway.combined_serial_number
+        generation = parse_wiser_device_ref_c(coord.gateway.c["comm_ref"])["generation"]
+        name = f"{coord.config_entry.title} µGateway"
+        model = coord.gateway.c_name
+        sw_version = coord.gateway_info["sw"]
+        hw_version = f"{generation} ({coord.gateway.c['comm_ref']})"
 
     area = None
-    for output in coordinator.gateway.outputs:
+    for output in coord.gateway.outputs if coord.gateway is not None else []:
         if "load" not in output:
             continue
-        load = coordinator.loads[output["load"]]
-        if load.room is not None and load.room in coordinator.rooms:
-            area = coordinator.rooms[load.room]["name"]
+
+        load = coord.loads[output["load"]]
+        if load.room is not None and load.room in coord.rooms:
+            area = coord.rooms[load.room]["name"]
 
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
         config_entry_id=entry.entry_id,
-        configuration_url=f"http://{coordinator.api_host}",
-        identifiers={(DOMAIN, gateway)},
+        configuration_url=f"http://{coord.api_host}",
+        identifiers={(DOMAIN, gateway_identifier)},
         manufacturer=MANUFACTURER,
-        model=f"{coordinator.gateway.c_name}",
-        name=f"{coordinator.config_entry.title} µGateway",
-        sw_version=f"{coordinator.gateway_info['sw']}",
-        hw_version=f"{generation} ({coordinator.gateway.c['comm_ref']})",
+        model=model,
+        name=name,
+        sw_version=sw_version,
+        hw_version=hw_version,
         suggested_area=area,
     )
