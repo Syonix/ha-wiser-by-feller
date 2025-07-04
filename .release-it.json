@@ -7,7 +7,7 @@
   "github": {
     "release": true,
     "releaseName": "${version}",
-    "web": true
+    "assets": ["dist/*.zip"]
   },
   "hooks": {
     "after:bump": "./bin/update-version.sh ${version}"

@@ -2,6 +2,7 @@
 */build/*
 */dist/*
 .coverage
+.env
 .pytest*
 .ruff_cache
 .venv
