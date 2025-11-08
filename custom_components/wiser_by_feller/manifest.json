@@ -19,7 +19,7 @@
     "aiowiserbyfeller"
   ],
   "requirements": [
-    "aiowiserbyfeller==1.0.0b23",
+    "aiowiserbyfeller==1.0.0",
     "websockets"
   ],
   "version": "0.2.4",

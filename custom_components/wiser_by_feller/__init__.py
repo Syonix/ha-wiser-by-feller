@@ -19,11 +19,12 @@ _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
+    Platform.CLIMATE,
     Platform.COVER,
     Platform.LIGHT,
     Platform.SCENE,
     Platform.SENSOR,
-    Platform.CLIMATE,
+    Platform.SWITCH,
 ]
 
 
