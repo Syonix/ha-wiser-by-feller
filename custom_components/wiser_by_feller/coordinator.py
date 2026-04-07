@@ -266,6 +266,15 @@ class WiserCoordinator(DataUpdateCoordinator):
 
             _LOGGER.debug("Successfully updated data from µGateway.")
 
+            # Reconnect WebSocket if it has died
+            if self._ws._idle:
+                _LOGGER.warning(
+                    "WebSocket connection to µGateway is idle/disconnected. Reconnecting..."
+                )
+                await self._ws_close()
+                self._ws._errcount = 0
+                self._ws.init()
+
         except asyncio.TimeoutError as err:
             raise UpdateFailed("Timeout while fetching data from µGateway") from err
         except (AuthorizationFailed, UnauthorizedUser) as err:
@@ -275,11 +284,21 @@ class WiserCoordinator(DataUpdateCoordinator):
         except UnsuccessfulRequest as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
 
+    async def _ws_close(self) -> None:
+        """Close the WebSocket connection if it exists."""
+        if self._ws._ws is not None:
+            try:
+                await self._ws._ws.close()
+            except Exception:  # noqa: BLE001
+                _LOGGER.debug("Error closing WebSocket connection, ignoring")
+            self._ws._ws = None
+        self._ws._watchdog.cancel()
+
     def ws_init(self) -> None:
         """Set up websocket with µGateway to receive load updates."""
         self._ws.subscribe(self.ws_update_data)
         self._ws.init()
-        # TODO: Check connection / reconnect -> Watchdog
+        # WebSocket reconnection is handled in _async_update_data()
 
     def ws_update_data(self, data: dict) -> None:
         """Process websocket data update."""
