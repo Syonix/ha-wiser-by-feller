@@ -75,8 +75,10 @@ class WiserRelayEntity(WiserEntity, CoverEntity):
         self._tracking_task = None
 
     @property
-    def is_closed(self) -> bool:
+    def is_closed(self) -> bool | None:
         """Return if the cover is closed or not."""
+        if self._load.state is None or self._load.state.get("level") is None:
+            return None
         return self._load.state["level"] == 10000
 
     @property
@@ -185,7 +187,7 @@ class WiserCoverEntity(WiserRelayEntity, CoverEntity):
     @property
     def current_cover_position(self) -> int | None:
         """Return current position of cover. None is unknown, 0 is closed, 100 is fully open."""
-        if self._load.state is None:
+        if self._load.state is None or self._load.state.get("level") is None:
             return None
 
         return wiser_to_cover_position(self._load.state["level"])
@@ -239,6 +241,8 @@ class WiserTiltableCoverEntity(WiserCoverEntity, CoverEntity):
     @property
     def current_cover_tilt_position(self) -> int | None:
         """Return current position of cover tilt. None is unknown, 0 is closed, 100 is fully open."""
+        if self._load.state is None or self._load.state.get("tilt") is None:
+            return None
         return wiser_to_cover_tilt(self._load.state["tilt"])
 
     async def async_open_cover_tilt(self, **kwargs):

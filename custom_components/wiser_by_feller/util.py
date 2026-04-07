@@ -45,8 +45,10 @@ def resolve_device_name(device: Device, room: dict | None, load: Load | None) ->
     return f"{room['name']} {name}"
 
 
-def wiser_to_brightness(value: int) -> int:
+def wiser_to_brightness(value: int | None) -> int | None:
     """Convert a Wiser brightness value (0..10000) to a HA brightness value (0..255)."""
+    if value is None:
+        return None
     return int(value / 10000 * 255)
 
 
@@ -55,8 +57,10 @@ def brightness_to_wiser(brightness: int) -> int:
     return int(brightness / 255 * 10000)
 
 
-def wiser_to_cover_position(value: int) -> int:
+def wiser_to_cover_position(value: int | None) -> int | None:
     """Convert a Wiser cover position (0..10000) to a HA cover position (100..0)."""
+    if value is None:
+        return None
     return 100 - int(value / 100)
 
 
@@ -65,8 +69,10 @@ def cover_position_to_wiser(cover_position: int) -> int:
     return (100 - cover_position) * 100
 
 
-def wiser_to_cover_tilt(value: int) -> int:
+def wiser_to_cover_tilt(value: int | None) -> int | None:
     """Convert a Wiser cover tilt (0..9) to a HA cover tilt (0..100)."""
+    if value is None:
+        return None
     return int(value / 9 * 100)
 
 

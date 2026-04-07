@@ -103,5 +103,5 @@ class WiserEntity(CoordinatorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated entity data from the coordinator."""
-        self._load.raw_state = self.coordinator.states[self._load.id]
+        self._load.raw_state = self.coordinator.states.get(self._load.id)
         self.async_write_ha_state()
