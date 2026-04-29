@@ -16,6 +16,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import DOMAIN
 from .coordinator import WiserCoordinator
+from .button_led import create_button_led_entities
 from .entity import WiserEntity
 from .util import brightness_to_wiser, wiser_to_brightness
 
@@ -54,6 +55,8 @@ async def async_setup_entry(
             # entities.append(WiserDimRgbEntity(coordinator, load, device, room))
         elif isinstance(load, Dim):  # Includes Dali
             entities.append(WiserDimEntity(coordinator, load, device, room))
+
+    entities.extend(create_button_led_entities(coordinator))
 
     if entities:
         async_add_entities(entities)
