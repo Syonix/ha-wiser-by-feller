@@ -19,7 +19,6 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import DOMAIN
 from .coordinator import WiserCoordinator
 from .entity import WiserEntity
 from .util import (
@@ -38,7 +37,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Wiser cover entities."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: WiserCoordinator = entry.runtime_data
 
     entities = []
     for load in coordinator.loads.values():

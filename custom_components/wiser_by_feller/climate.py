@@ -18,8 +18,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import DOMAIN
-from .const import MANUFACTURER
+from .const import DOMAIN, MANUFACTURER
 from .coordinator import WiserCoordinator
 from .entity import WiserEntity
 
@@ -45,7 +44,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Wiser climate entities."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: WiserCoordinator = entry.runtime_data
 
     entities = []
     for hvac_group in (

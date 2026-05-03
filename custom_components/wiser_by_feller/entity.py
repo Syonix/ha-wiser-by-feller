@@ -7,8 +7,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from . import DOMAIN
-from .const import MANUFACTURER
+from .const import DOMAIN, MANUFACTURER
 from .coordinator import WiserCoordinator, get_unique_id
 from .util import resolve_device_name
 

@@ -14,7 +14,6 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import DOMAIN
 from .climate import WiserHvacGroupDeviceEntity, resolve_room
 from .const import HA_BLUE
 from .coordinator import WiserCoordinator
@@ -29,7 +28,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Wiser button entities."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: WiserCoordinator = entry.runtime_data
 
     entities = []
     for load in coordinator.loads.values():
