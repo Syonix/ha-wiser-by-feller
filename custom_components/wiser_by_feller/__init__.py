@@ -29,8 +29,6 @@ PLATFORMS: list[Platform] = [
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Wiser by Feller from a config entry."""
-    hass.data.setdefault(DOMAIN, {})
-
     session = async_get_clientsession(hass)
     auth = Auth(session, entry.data["host"], token=entry.data["token"])
     api = WiserByFellerAPI(auth)
@@ -40,7 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     wiser_coordinator.ws_init()
 
-    hass.data[DOMAIN][entry.entry_id] = wiser_coordinator
+    entry.runtime_data = wiser_coordinator
 
     await wiser_coordinator.async_config_entry_first_refresh()
     await async_setup_gateway(hass, entry, wiser_coordinator)
@@ -56,7 +54,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
         hass.services.async_remove(DOMAIN, "status_light")
 
     return unload_ok

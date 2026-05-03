@@ -10,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntry
 
-from . import DOMAIN
+from .coordinator import WiserCoordinator
 
 TO_REDACT = ("token", "serial_nr", "serial_number", "sn", "instance_id", "identifiers")
 
@@ -19,7 +19,7 @@ async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: WiserCoordinator = entry.runtime_data
     loads_json = [load.raw_data for load in coordinator.loads.values()]
     devices_json = [
         coordinator.devices[device_id].raw_data for device_id in coordinator.devices
@@ -42,7 +42,7 @@ async def async_get_device_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry, device: DeviceEntry
 ) -> dict[str, Any]:
     """Return diagnostics for a device."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: WiserCoordinator = entry.runtime_data
     result: dict[str, Any] = {}
     result["device"] = async_redact_data(json.loads(device.json_repr), TO_REDACT)
 
