@@ -12,7 +12,6 @@
     }
   ],
   "documentation": "https://github.com/syonix/ha-wiser-by-feller",
-  "homekit": {},
   "integration_type": "hub",
   "iot_class": "local_polling",
   "issue_tracker": "https://github.com/syonix/ha-wiser-by-feller/issues",
@@ -21,7 +20,6 @@
   ],
   "requirements": [
     "aiowiserbyfeller==1.0.0b23",
-    "async_timeout",
     "websockets"
   ],
   "version": "0.2.4",

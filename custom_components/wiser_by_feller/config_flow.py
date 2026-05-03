@@ -231,7 +231,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._reauth_entry,
                     data=info,
                 )
-                await self.hass.config_entries.async_reload(self._reauth_entry_id)
+                await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
 
                 return self.async_abort(reason="reauth_successful")
 
