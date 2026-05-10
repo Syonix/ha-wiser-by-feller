@@ -10,6 +10,7 @@ from aiowiserbyfeller.const import KIND_LIGHT, KIND_SWITCH
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP_KELVIN,
+    ATTR_RGBW_COLOR,
     LightEntity,
 )
 from homeassistant.components.light.const import ColorMode
@@ -49,10 +50,7 @@ async def async_setup_entry(
         elif isinstance(load, DaliTw):
             entities.append(WiserDimTwEntity(coordinator, load, device, room))
         elif isinstance(load, DaliRgbw):
-            _LOGGER.warning(
-                "Sorry, Dali RGB devices are currently not supported. Feel free to request an implementation on GitHub: https://github.com/Syonix/ha-wiser-by-feller/issues/new"
-            )
-            # entities.append(WiserDimRgbEntity(coordinator, load, device, room))
+            entities.append(WiserDimRgbwEntity(coordinator, load, device, room))
         elif isinstance(load, Dim):  # Includes Dali
             entities.append(WiserDimEntity(coordinator, load, device, room))
 
@@ -201,6 +199,63 @@ class WiserDimTwEntity(WiserEntity, LightEntity):
             await self._load.async_set_bri_ct(current_bri, ct_kw)
             self._load.raw_state["bri"] = current_bri
             self._load.raw_state["ct"] = ct_kw
+        elif bri_kw is not None:
+            bri = brightness_to_wiser(bri_kw)
+            await self._load.async_set_bri(bri)
+            self._load.raw_state["bri"] = bri
+        else:
+            await self._load.async_switch_on()
+            self._load.raw_state["bri"] = 100
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off device load."""
+        await self._load.async_switch_off()
+        self._load.raw_state["bri"] = 0
+
+
+class WiserDimRgbwEntity(WiserEntity, LightEntity):
+    """Entity class for DALI RGBW dimmable lights."""
+
+    _attr_color_mode = ColorMode.RGBW
+    _attr_supported_color_modes = {ColorMode.RGBW}
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return device state."""
+        return self._load.raw_state["bri"] > 0
+
+    @property
+    def brightness(self) -> int | None:
+        """Return the brightness of this light between 0..255."""
+        return wiser_to_brightness(self._load.raw_state["bri"])
+
+    @property
+    def rgbw_color(self) -> tuple[int, int, int, int] | None:
+        """Return the current RGBW color as a 4-tuple of 0..255 ints."""
+        rs = self._load.raw_state
+        r, g, b, w = rs.get("red"), rs.get("green"), rs.get("blue"), rs.get("white")
+        if r is None or g is None or b is None or w is None:
+            return None
+        return (r, g, b, w)
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on device load with optional brightness and RGBW color."""
+        bri_kw = kwargs.get(ATTR_BRIGHTNESS)
+        rgbw_kw = kwargs.get(ATTR_RGBW_COLOR)
+
+        if rgbw_kw is not None:
+            r, g, b, w = rgbw_kw
+            bri = (
+                brightness_to_wiser(bri_kw)
+                if bri_kw is not None
+                else (self._load.raw_state.get("bri") or 10000)
+            )
+            await self._load.async_set_bri_rgbw(bri, r, g, b, w)
+            self._load.raw_state["bri"] = bri
+            self._load.raw_state["red"] = r
+            self._load.raw_state["green"] = g
+            self._load.raw_state["blue"] = b
+            self._load.raw_state["white"] = w
         elif bri_kw is not None:
             bri = brightness_to_wiser(bri_kw)
             await self._load.async_set_bri(bri)

@@ -94,7 +94,7 @@ The integration automatically prompts you to re-connect if there is any authenti
 | LED dimmers                       |    ✅    | Full support, well tested      |
 | DALI dimmers                      |    ✅    | Full support, well tested      |
 | DALI tunable white dimmers        |    ✅    | Full support, recently added   |
-| DALI RGBW dimmers                 |    ❌    | On the roadmap                 |
+| DALI RGBW dimmers                 |    ✅    | Full support, recently added   |
 | Blind / awning controls           |    ✅    | Full support, well tested      |
 | Secondary controls (Nebenstellen) |    ✅    | Support for status LED control |
 | Heating controller 6K             |    ✅    | Full support, recently added   |
