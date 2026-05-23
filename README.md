@@ -9,9 +9,6 @@ Use your Wiser by Feller smart light switches, cover controls and scene buttons 
 > [!IMPORTANT]
 > This integration implements [Wiser by Feller](https://wiser.feller.ch) and not [Wiser by Schneider Electric](https://www.se.com/de/de/product-range/65635-wiser/), which is a competing Smart Home platform (and is not compatible). It es even more confusing, as Feller (the company) is a local subsidiary of Schneider Electric, catering only to the Swiss market.
 
-> [!WARNING]
-> This integration is not yet feature complete and still under active development. See below for supported features and roadmap.
-
 ## 📦 Installation
 ### Using Home Assistant Community Store (HACS)
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Syonix&repository=ha-wiser-by-feller)
@@ -96,8 +93,8 @@ The integration automatically prompts you to re-connect if there is any authenti
 | Light switches                    |    ✅    | Full support, well tested      |
 | LED dimmers                       |    ✅    | Full support, well tested      |
 | DALI dimmers                      |    ✅    | Full support, well tested      |
-| DALI tunable white dimmers        |    ❌    | On the roadmap                 |
-| DALI RGBW dimmers                 |    ❌    | On the roadmap                 |
+| DALI tunable white dimmers        |    ✅    | Full support, recently added   |
+| DALI RGBW dimmers                 |    ✅    | Full support, recently added   |
 | Blind / awning controls           |    ✅    | Full support, well tested      |
 | Secondary controls (Nebenstellen) |    ✅    | Support for status LED control |
 | Heating controller 6K             |    ✅    | Full support, recently added   |
