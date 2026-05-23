@@ -20,7 +20,7 @@
     "aiowiserbyfeller"
   ],
   "requirements": [
-    "aiowiserbyfeller==1.0.1b1",
+    "aiowiserbyfeller @ git+https://github.com/tech-geek-4/aioWiserbyfeller.git@tech-geek-4-LED-Button-override",
     "async_timeout",
     "websockets"
   ],
