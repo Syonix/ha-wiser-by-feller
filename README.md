@@ -100,6 +100,7 @@ The integration automatically prompts you to re-connect if there is any authenti
 | Heating controller 6K             |    ✅    | Full support, recently added   |
 | Temperature sensors               |    ✅    | Full support, recently added   |
 | Weather station + REG module      |    ✅    | Full support, recently added   |
+| Button LED Override function      |    ✅    | Full support, recently added   |
 
 ## 🛣️ Roadmap
 Here's a couple of things that are on the roadmap for future releases:
