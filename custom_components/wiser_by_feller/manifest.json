@@ -20,7 +20,7 @@
     "aiowiserbyfeller"
   ],
   "requirements": [
-    "aiowiserbyfeller==1.0.1b1",
+    "aiowiserbyfeller==1.1.0",
     "async_timeout",
     "websockets"
   ],
