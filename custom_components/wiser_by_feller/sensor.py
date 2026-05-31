@@ -33,7 +33,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
 from slugify import slugify
 
-from . import DOMAIN
+from .const import DOMAIN
 from .coordinator import WiserCoordinator
 from .entity import WiserEntity
 
@@ -132,7 +132,7 @@ async def async_setup_entry(
 ) -> None:
     """Set up Wiser sensor entities."""
 
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: WiserCoordinator = entry.runtime_data
 
     entities = [
         WiserSystemHealthEntity(coordinator, description)
@@ -364,7 +364,6 @@ class WiserRainSensorEntity(WiserSensorEntity, BinarySensorEntity):
         """Set up the rain sensor entity."""
         super().__init__(coordinator, device, room, sensor)
         self._attr_unique_id = f"{self._attr_raw_unique_id}_rain"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_translation_key = "rain"
         self._attr_icon = "mdi:weather-rainy"
 
@@ -381,7 +380,6 @@ class WiserHailSensorEntity(WiserSensorEntity, BinarySensorEntity):
         """Set up the hail sensor entity."""
         super().__init__(coordinator, device, room, sensor)
         self._attr_unique_id = f"{self._attr_raw_unique_id}_hail"
-        self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_translation_key = "hail"
         self._attr_icon = "mdi:weather-hail"
 

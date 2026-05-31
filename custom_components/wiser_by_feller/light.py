@@ -34,7 +34,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up Wiser light entities."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+    coordinator: WiserCoordinator = entry.runtime_data
 
     entities = []
     for load in coordinator.loads.values():

@@ -7,9 +7,10 @@ Usage:
 $ python3 scripts/mock-zeroconf.py 192.168.0.99
 """
 
-from zeroconf import Zeroconf, ServiceInfo
 import socket
 import sys
+
+from zeroconf import ServiceInfo, Zeroconf
 
 if len(sys.argv) < 2:
     print("Usage: python3 scripts/mock-zeroconf.py <ip-address>")

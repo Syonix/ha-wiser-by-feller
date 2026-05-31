@@ -15,12 +15,12 @@ from aiowiserbyfeller import (
     WiserByFellerAPI,
 )
 from homeassistant import config_entries
-from homeassistant.components import dhcp
 from homeassistant.const import CONF_HOST, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import AbortFlow
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
 import voluptuous as vol
 
@@ -131,7 +131,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_dhcp(self, discovery_info: dhcp.DhcpServiceInfo):
+    async def async_step_dhcp(self, discovery_info: DhcpServiceInfo):
         """Handle a flow initialized by discovery."""
         try:
             session = async_get_clientsession(self.hass)
@@ -231,7 +231,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     self._reauth_entry,
                     data=info,
                 )
-                await self.hass.config_entries.async_reload(self._reauth_entry_id)
+                await self.hass.config_entries.async_reload(self._reauth_entry.entry_id)
 
                 return self.async_abort(reason="reauth_successful")
 

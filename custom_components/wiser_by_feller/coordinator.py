@@ -17,6 +17,7 @@ from aiowiserbyfeller import (
     Load,
     Scene,
     Sensor,
+    SystemFlag,
     UnauthorizedUser,
     UnsuccessfulRequest,
     Websocket,
@@ -76,6 +77,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         self._device_ids_by_serial = None
         self._scenes = None
         self._sensors = None
+        self._system_flags = None
         self._system_health = None
         self._hvac_groups = None
         self._assigned_thermostats = {}
@@ -162,6 +164,11 @@ class WiserCoordinator(DataUpdateCoordinator):
     def system_health(self) -> dict | None:
         """A dict containing system health information of the connected µGateway."""
         return self._system_health
+
+    @property
+    def system_flags(self) -> list[SystemFlag] | None:
+        """A list of system flags of the connected µGateway."""
+        return self._system_flags
 
     @property
     def api_host(self) -> str:
@@ -277,6 +284,10 @@ class WiserCoordinator(DataUpdateCoordinator):
             if self._scenes is None:
                 async with asyncio.timeout(10):
                     await self.async_update_scenes()
+
+            if self._system_flags is None:
+                async with asyncio.timeout(10):
+                    await self.async_update_system_flags()
 
             if self._sensors is None and self.gateway_supports_sensors:
                 async with asyncio.timeout(10):
@@ -459,6 +470,11 @@ class WiserCoordinator(DataUpdateCoordinator):
             self._assigned_thermostats[group.thermostat_ref.unprefixed_address] = (
                 group.id
             )
+
+    async def async_update_system_flags(self) -> None:
+        """Update Wiser system flags from µGateway."""
+        _LOGGER.debug("Attempting to update system flags from µGateway...")
+        self._system_flags = await self._api.async_get_system_flags()
 
     async def async_update_system_health(self) -> None:
         """Update Wiser system health from µGateway."""

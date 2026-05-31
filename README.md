@@ -48,6 +48,20 @@ By default, the setup fails, if fields like `fw_version` or `serial_nr` are miss
 > [!CAUTION]
 > Use with caution, this can affect entity IDs and functionality! You should always check the actual API output manually before checking this checkbox.
 
+## 🗑️ Removal
+To remove the integration from Home Assistant:
+
+1. Go to **Settings → Devices & services**.
+2. Find **Wiser by Feller** and click on it.
+3. Click the three-dot menu (⋮) in the top-right corner and select **Delete**.
+
+This removes all entities, devices, and configuration associated with this integration. Your Wiser setup is not affected — devices continue to work normally through the Wiser app.
+
+If you also installed via HACS and want to remove the files:
+1. Open HACS and navigate to **Integrations**.
+2. Find **Wiser by Feller**, click the three-dot menu, and select **Remove**.
+3. Restart Home Assistant.
+
 ## 🧰 Basic functionality
 Wiser by Feller devices always consist of two parts: The control front and the base module. There are switching base modules (for light switches and cover controllers) and non-switching base modules (for scene buttons and secondary controls).
 
@@ -79,6 +93,27 @@ The integration listens to state changes via a Websocket, leading to near-instan
 The integration also provides a status light service that allows you to control the status leds of a Wiser device. Each channel (load) of the device supports a brightness value for the logical "on" and "off" state. Secondary devices follow the main device. As there currently is no way in the Wiser ecosystem to determine wheter a scene is active, scene buttons do not have a logical "on" state. Two-channel devices (e.g. two dimmers in the same switch) allow for different configurations for each channel.
 
 This feature can be used to indicate system status (e.g. turn a light switch to red to indicate that your washing machine has finished and wants to be emptied or detected motion in a different room).
+
+#### Service: `wiser_by_feller.status_light`
+
+| Field | Required | Description |
+|-------|:--------:|-------------|
+| `device` | ✅ | The Wiser device to configure (must belong to this integration) |
+| `channel` | ✅ | Button channel: `0` = Left/Top/Center, `1` = Right/Top, `2` = Left/Bottom, `3` = Right/Bottom |
+| `color` | ✅ | RGB color as a list of three integers `[R, G, B]`, each 0–255 |
+| `brightness_on` | ✅ | LED brightness (0–255) when the associated load is on |
+| `brightness_off` | ❌ | LED brightness (0–255) when the associated load is off. Defaults to `brightness_on` when omitted |
+
+Example — turn the first button of a device red while its load is on, and dim it when off:
+```yaml
+service: wiser_by_feller.status_light
+data:
+  device: "abc123def456"   # use the HA device ID
+  channel: 0
+  color: [255, 0, 0]
+  brightness_on: 255
+  brightness_off: 30
+```
 
 #### Limitations
 - In the current implementation of the Wiser ecosystem it is not possible to configure different colors for the "on" and "off" state.
