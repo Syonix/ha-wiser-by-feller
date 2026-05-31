@@ -20,7 +20,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .button_led import create_button_led_entities
-from .const import DOMAIN
 from .coordinator import WiserCoordinator
 from .entity import WiserEntity
 from .util import brightness_to_wiser, wiser_to_brightness
