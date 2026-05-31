@@ -1,4 +1,4 @@
-# Runs tests (Python 3.12+, matching HA's minimum requirement) and linting.
+# Runs tests (Python 3.13+, matching HA's minimum requirement) and linting.
 name: Test & Lint
 
 on:
@@ -33,7 +33,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.12.10", "3.13.3"]
+        python-version: ["3.13.3"]
 
     steps:
       - uses: actions/checkout@v3
