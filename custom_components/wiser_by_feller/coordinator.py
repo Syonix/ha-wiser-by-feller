@@ -192,6 +192,11 @@ class WiserCoordinator(DataUpdateCoordinator):
         """State if the µGateway supports HVAC groups (Gen B)."""
         return self.is_gen_b
 
+    @property
+    def api(self):
+        """Wiser by Feller API."""
+        return self._api
+
     async def async_set_status_light(self, call: ServiceCall) -> bool:
         """Set the button illumination for a channel of a specific device."""
 
@@ -341,9 +346,9 @@ class WiserCoordinator(DataUpdateCoordinator):
     async def async_update_buttons(self) -> None:
         """Update Wiser buttons from µGateway."""
         _LOGGER.debug("Attempting to update buttons from µGateway...")
-        
+
         self._buttons = await self._api.async_get_buttons()
-        
+
         buttons_by_device = defaultdict(list)
         for button in self._buttons:
             buttons_by_device[button["device"]].append(button)

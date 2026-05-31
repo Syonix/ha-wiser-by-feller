@@ -6,14 +6,18 @@ from typing import Any
 
 from aiowiserbyfeller import Device, Load
 from aiowiserbyfeller.enum import BlinkPattern
-from homeassistant.components.light import ATTR_EFFECT, ATTR_RGB_COLOR, LightEntity, LightEntityFeature
+from homeassistant.components.light import (
+    ATTR_EFFECT,
+    ATTR_RGB_COLOR,
+    LightEntity,
+    LightEntityFeature,
+)
 from homeassistant.components.light.const import ColorMode
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import WiserCoordinator
-
 
 LED_EFFECTS = [pattern.value for pattern in BlinkPattern]
 
@@ -225,7 +229,7 @@ def create_button_led_entities(coordinator: WiserCoordinator) -> list[WiserButto
                     if fallback_load.room is not None and coordinator.rooms
                     else None
                 )
-                
+
             entities.append(
                 WiserButtonLedLightEntity(
                     coordinator=coordinator,
@@ -386,7 +390,7 @@ class WiserButtonLedLightEntity(LightEntity):
             pattern = BlinkPattern.PERMANENT
             effect = pattern.value
 
-        await self.coordinator._api.async_set_button_led(
+        await self.coordinator.api.async_set_button_led(
             button_id=self._button_id,
             led_index=self._led_index,
             on=True,
@@ -406,13 +410,13 @@ class WiserButtonLedLightEntity(LightEntity):
         except ValueError:
             pattern = BlinkPattern.PERMANENT
 
-        await self.coordinator._api.async_set_button_led(
+        await self.coordinator.api.async_set_button_led(
             button_id=self._button_id,
             led_index=self._led_index,
             on=False,
             pattern=pattern,
             color=rgb_tuple_to_hex(self._attr_rgb_color),
         )
-        
+
         self._attr_is_on = False
         self.async_write_ha_state()
