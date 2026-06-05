@@ -352,7 +352,8 @@ class WiserCoordinator(DataUpdateCoordinator):
         _LOGGER.debug("Attempting to update device loads from µGateway...")
         self._loads = {load.id: load for load in await self._api.async_get_used_loads()}
         self._loads_by_device_channel = {
-            (load.device, load.channel): load for load in self._loads.values()}
+            (load.device, load.channel): load for load in self._loads.values()
+        }
 
     async def async_update_buttons(self) -> None:
         """Update Wiser buttons from µGateway."""

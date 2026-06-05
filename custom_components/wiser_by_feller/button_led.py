@@ -195,7 +195,9 @@ def build_led_definitions(device_buttons: list[dict]) -> list[dict]:
     return definitions
 
 
-def create_button_led_entities(coordinator: WiserCoordinator) -> list[WiserButtonLedLightEntity]:
+def create_button_led_entities(
+    coordinator: WiserCoordinator,
+) -> list[WiserButtonLedLightEntity]:
     """Create one HA light entity per controllable button LED."""
     entities: list[WiserButtonLedLightEntity] = []
 
@@ -212,7 +214,9 @@ def create_button_led_entities(coordinator: WiserCoordinator) -> list[WiserButto
 
             load_channel = led_definition["load_channel"]
             if load_channel is not None:
-                load = coordinator.loads_by_device_channel.get((device_id, load_channel))
+                load = coordinator.loads_by_device_channel.get(
+                    (device_id, load_channel)
+                )
 
             if load is None and led_definition["sub_type"] != "scene":
                 load = fallback_load
@@ -296,7 +300,9 @@ class WiserButtonLedLightEntity(LightEntity):
         else:
             base_name = f"{get_device_name(self._device, self._device_id)} LED"
 
-        self._attr_name = f"{base_name} {self._position}" if self._position else base_name
+        self._attr_name = (
+            f"{base_name} {self._position}" if self._position else base_name
+        )
 
     @property
     def device_info(self) -> DeviceInfo | None:
@@ -382,7 +388,9 @@ class WiserButtonLedLightEntity(LightEntity):
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn LED override on."""
         rgb_color = tuple(kwargs.get(ATTR_RGB_COLOR, self._attr_rgb_color))
-        effect = kwargs.get(ATTR_EFFECT, self._attr_effect or BlinkPattern.PERMANENT.value)
+        effect = kwargs.get(
+            ATTR_EFFECT, self._attr_effect or BlinkPattern.PERMANENT.value
+        )
 
         try:
             pattern = BlinkPattern(effect)
