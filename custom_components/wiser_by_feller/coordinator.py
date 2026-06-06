@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+from collections import defaultdict
 from datetime import timedelta
 import logging
 from types import MappingProxyType
@@ -68,6 +69,9 @@ class WiserCoordinator(DataUpdateCoordinator):
         self._api = api
         self._options = options
         self._loads = None
+        self._loads_by_device_channel = {}
+        self._buttons = None
+        self._buttons_by_device = {}
         self._states = None
         self._devices = None
         self._device_ids_by_serial = None
@@ -102,6 +106,21 @@ class WiserCoordinator(DataUpdateCoordinator):
     def scenes(self) -> dict[int, Scene] | None:
         """A list of scenes configured in the Wiser by Feller ecosystem (Wiser eSetup app or Wiser Home app)."""
         return self._scenes
+
+    @property
+    def loads_by_device_channel(self) -> dict[tuple[str, int], Load]:
+        """Load lookup by physical Wiser device id and channel."""
+        return self._loads_by_device_channel
+
+    @property
+    def buttons(self) -> list[dict] | None:
+        """A list of Wiser buttons."""
+        return self._buttons
+
+    @property
+    def buttons_by_device(self) -> dict[str, list[dict]]:
+        """Buttons grouped by physical Wiser device id."""
+        return self._buttons_by_device
 
     @property
     def sensors(self) -> dict[int, Sensor] | None:
@@ -180,6 +199,11 @@ class WiserCoordinator(DataUpdateCoordinator):
         """State if the µGateway supports HVAC groups (Gen B)."""
         return self.is_gen_b
 
+    @property
+    def api(self):
+        """Wiser by Feller API."""
+        return self._api
+
     async def async_set_status_light(self, call: ServiceCall) -> bool:
         """Set the button illumination for a channel of a specific device."""
 
@@ -237,6 +261,10 @@ class WiserCoordinator(DataUpdateCoordinator):
             if self._loads is None:
                 async with asyncio.timeout(10):
                     await self.async_update_loads()
+
+            if self._buttons is None:
+                async with asyncio.timeout(10):
+                    await self.async_update_buttons()
 
             if self._rooms is None:
                 async with asyncio.timeout(10):
@@ -323,6 +351,20 @@ class WiserCoordinator(DataUpdateCoordinator):
         """Update Wiser device loads from µGateway."""
         _LOGGER.debug("Attempting to update device loads from µGateway...")
         self._loads = {load.id: load for load in await self._api.async_get_used_loads()}
+        self._loads_by_device_channel = {
+            (load.device, load.channel): load for load in self._loads.values()
+        }
+
+    async def async_update_buttons(self) -> None:
+        """Update Wiser buttons from µGateway."""
+        _LOGGER.debug("Attempting to update buttons from µGateway...")
+
+        self._buttons = await self._api.async_get_buttons()
+
+        buttons_by_device = defaultdict(list)
+        for button in self._buttons:
+            buttons_by_device[button["device"]].append(button)
+        self._buttons_by_device = dict(buttons_by_device)
 
     async def async_update_devices(self) -> None:
         """Update Wiser devices from µGateway."""

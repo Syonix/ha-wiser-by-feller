@@ -119,6 +119,27 @@ data:
 - In the current implementation of the Wiser ecosystem it is not possible to configure different colors for the "on" and "off" state.
 - Note that updating the configuration can take up to multiple seconds as there are multiple slow API calls involved.
 
+### 🚨 Button LED override
+Supported Wiser buttons can expose their integrated LED indicators as Home Assistant light entities.
+
+#### Features
+- On/Off control
+- RGB color selection
+- LED effects and blink patterns
+- Use in automations, scripts and scenes
+The LED override is temporary and does not modify the configured orientation or status light in the Wiser App. Once the LED entity is turned off again, the button returns to its normal operation.
+
+#### Requirements
+Due to current firmware limitations, LED entities are only available for buttons that are enabled on the Wiser Gateway (for example buttons configured for scripts or scenes). Gateway -> "Buttons" -> read the Beta notification
+
+#### Example Use Cases
+- Window and door status indication
+- Alarm system status
+- Presence indication
+- Energy management notifications
+- General visual feedback directly on wall-mounted buttons
+
+
 ### 🧰 Housekeeping
 The integration automatically prompts you to re-connect if there is any authentication error.
 
@@ -135,6 +156,7 @@ The integration automatically prompts you to re-connect if there is any authenti
 | Heating controller 6K             |    ✅    | Full support, recently added   |
 | Temperature sensors               |    ✅    | Full support, recently added   |
 | Weather station + REG module      |    ✅    | Full support, recently added   |
+| Button LED Override function      |    ✅    | Full support, recently added   |
 
 ## 🛣️ Roadmap
 Here's a couple of things that are on the roadmap for future releases:
