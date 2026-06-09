@@ -91,9 +91,12 @@ async def async_setup_gateway(
         if "load" not in output:
             continue
 
-        load = coord.loads[output["load"]]
+        load = coord.loads.get(output["load"])
+        if load is None:
+            continue  # coord.loads only contains loads not marked as unused.
+
         if load.room is not None and load.room in coord.rooms:
-            area = coord.rooms[load.room]["name"]
+            area = coord.rooms[load.room].get("name")
 
     device_registry = dr.async_get(hass)
     device_registry.async_get_or_create(
