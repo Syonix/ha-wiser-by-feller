@@ -34,13 +34,13 @@ The integration depends on [aioWiserByFeller](https://github.com/Syonix/aioWiser
 Bump the library version in its `pyproject.toml` to a dev suffix:
 
 ```toml
-version = "1.0.1.dev0"
+version = "2.0.1.dev0"
 ```
 
 Update the requirement in `manifest.json` to match:
 
 ```json
-"aiowiserbyfeller==1.0.1.dev0"
+"aiowiserbyfeller==2.0.1.dev0"
 ```
 
 Install the library into this repo's venv in editable mode:
