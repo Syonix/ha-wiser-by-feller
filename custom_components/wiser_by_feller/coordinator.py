@@ -27,10 +27,10 @@ import aiowiserbyfeller.errors
 from aiowiserbyfeller.util import parse_wiser_device_ref_c
 from homeassistant.core import ServiceCall
 from homeassistant.exceptions import ConfigEntryAuthFailed
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import OPTIONS_ALLOW_MISSING_GATEWAY_DATA
+from .const import DOMAIN, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
 from .exceptions import (
     InvalidEntityChannelSpecified,
     InvalidEntitySpecified,
@@ -322,7 +322,9 @@ class WiserCoordinator(DataUpdateCoordinator):
     async def async_update_loads(self) -> None:
         """Update Wiser device loads from µGateway."""
         _LOGGER.debug("Attempting to update device loads from µGateway...")
-        self._loads = {load.id: load for load in await self._api.async_get_used_loads()}
+        loads = await self._api.async_get_used_loads()
+        self._loads = {load.id: load for load in loads}
+        self._sync_unknown_type_issues(loads, "load", extra_log_attrs=["sub_type"])
 
     async def async_update_devices(self) -> None:
         """Update Wiser devices from µGateway."""
@@ -410,9 +412,9 @@ class WiserCoordinator(DataUpdateCoordinator):
     async def async_update_sensors(self) -> None:
         """Update Wiser sensors from µGateway."""
         _LOGGER.debug("Attempting to update sensors from µGateway...")
-        self._sensors = {
-            sensor.id: sensor for sensor in await self._api.async_get_sensors()
-        }
+        sensors = await self._api.async_get_sensors()
+        self._sensors = {sensor.id: sensor for sensor in sensors}
+        self._sync_unknown_type_issues(sensors, "sensor")
 
     async def async_update_hvac_groups(self) -> None:
         """Update Wiser HVAC groups from µGateway."""
@@ -458,3 +460,46 @@ class WiserCoordinator(DataUpdateCoordinator):
         delay = config["outputs"][load.channel]["delay_ms"]
 
         return delay < 10000
+
+    def _sync_unknown_type_issues(
+        self,
+        items: list,
+        kind: str,
+        extra_log_attrs: list[str] | None = None,
+    ) -> None:
+        """Create or delete HA issues for items with unknown types."""
+        for item in items:
+            issue_id = f"unknown_{kind}_type_{item.id}"
+            if type(item) is Load:
+                extra_str = ""
+                if extra_log_attrs:
+                    extra_str = (
+                        " ("
+                        + ", ".join(
+                            f"{a}: '{getattr(item, a)}'" for a in extra_log_attrs
+                        )
+                        + ")"
+                    )
+                _LOGGER.warning(
+                    "%s %s ('%s') has unknown type '%s'%s and will be ignored",
+                    kind.capitalize(),
+                    item.id,
+                    item.name,
+                    item.type,
+                    extra_str,
+                )
+                ir.async_create_issue(
+                    self.hass,
+                    DOMAIN,
+                    issue_id,
+                    is_fixable=False,
+                    severity=ir.IssueSeverity.WARNING,
+                    translation_key=f"unknown_{kind}_type",
+                    translation_placeholders={
+                        "item_type": str(item.type),
+                        "item_id": str(item.id),
+                        "item_name": str(item.name or item.id),
+                    },
+                )
+            else:
+                ir.async_delete_issue(self.hass, DOMAIN, issue_id)

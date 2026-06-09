@@ -132,6 +132,16 @@
       }
     }
   },
+  "issues": {
+    "unknown_load_type": {
+      "title": "Unknown load type \"{item_type}\" on load {item_id}",
+      "description": "Load \"{item_name}\" (ID: {item_id}) has an unknown type \"{item_type}\" and is not supported by this integration. It will be ignored until support is added.\n\nIf you are using pre-production devices, please report this load type to the integration maintainers so it can be added."
+    },
+    "unknown_sensor_type": {
+      "title": "Unknown sensor type \"{item_type}\" on sensor {item_id}",
+      "description": "Sensor \"{item_name}\" (ID: {item_id}) has an unknown type \"{item_type}\" and is not supported by this integration. It will be ignored until support is added.\n\nIf you are using pre-production devices, please report this sensor type to the integration maintainers so it can be added."
+    }
+  },
   "services": {
     "status_light": {
       "name": "Set status light",
