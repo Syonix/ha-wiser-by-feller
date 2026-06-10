@@ -33,11 +33,7 @@ from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import DOMAIN, HA_BLUE, LED_OFF_COLOR, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
-from .exceptions import (
-    InvalidEntityChannelSpecified,
-    InvalidEntitySpecified,
-    UnexpectedGatewayResult,
-)
+from .exceptions import UnexpectedGatewayResult
 from .util import resolve_device_name, rgb_tuple_to_hex
 
 _LOGGER = logging.getLogger(__name__)
@@ -195,9 +191,8 @@ class WiserCoordinator(DataUpdateCoordinator):
         """Wiser by Feller API."""
         return self._api
 
-    async def async_set_status_light(self, call: ServiceCall) -> bool:
+    async def async_set_status_light(self, call: ServiceCall) -> None:
         """Set the button illumination for a channel of a specific device."""
-
         channel = int(call.data["channel"])
         device_id = call.data["device"]
         registry = dr.async_get(self.hass)
@@ -205,13 +200,19 @@ class WiserCoordinator(DataUpdateCoordinator):
         sn = device.serial_number
 
         if sn not in self._device_ids_by_serial:
-            raise InvalidEntitySpecified(f"Device {device_id} not found!")
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="device_not_found",
+                translation_placeholders={"device_id": device_id},
+            )
 
         wdevice = self._device_ids_by_serial[sn]
 
         if channel >= len(self._devices[wdevice].inputs):
-            raise InvalidEntityChannelSpecified(
-                f"Device {device_id} does not have channel {channel}"
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="invalid_channel",
+                translation_placeholders={"channel": str(channel)},
             )
 
         data = {
@@ -224,13 +225,16 @@ class WiserCoordinator(DataUpdateCoordinator):
             ),
         }
 
-        # TODO: Error Handling
-        # TODO: It appears the very first time it does not set the configuration
-        config = await self._api.async_get_device_config(wdevice)
-        await self._api.async_set_device_input_config(config["id"], channel, data)
-        await self._api.async_apply_device_config(config["id"])
-
-        return True
+        try:
+            config = await self._api.async_get_device_config(wdevice)
+            await self._api.async_set_device_input_config(config["id"], channel, data)
+            await self._api.async_apply_device_config(config["id"])
+        except UnsuccessfulRequest as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="status_light_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
 
     async def async_ping_device(self, device_id: str) -> bool:
         """Device will light up the yellow LEDs of all buttons for a short time."""
