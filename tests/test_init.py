@@ -42,7 +42,7 @@ async def test_setup_entry_forwards_all_platforms(
 
 
 async def test_setup_entry_registers_status_light_service(hass, setup_integration):
-    """async_setup_entry registers the 'status_light' service under the domain."""
+    """async_setup registers the 'status_light' service under the domain."""
     assert hass.services.has_service(DOMAIN, "status_light")
 
 
@@ -99,12 +99,17 @@ async def test_unload_entry_calls_ws_close(hass, setup_integration, mock_coordin
     mock_coordinator.ws_close.assert_called_once()
 
 
-async def test_unload_entry_removes_service(hass, setup_integration):
-    """async_unload_entry removes the 'status_light' service from hass.services."""
+async def test_unload_entry_keeps_service(hass, setup_integration):
+    """async_unload_entry does not remove the 'status_light' service.
+
+    The service is registered once in async_setup (not per config entry) so it
+    persists as long as the integration is loaded, regardless of how many entries
+    are active.
+    """
     entry = setup_integration
     await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
-    assert not hass.services.has_service(DOMAIN, "status_light")
+    assert hass.services.has_service(DOMAIN, "status_light")
 
 
 # ── find_button service ───────────────────────────────────────────────────────
