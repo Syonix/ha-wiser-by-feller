@@ -512,7 +512,12 @@ class WiserCoordinator(DataUpdateCoordinator):
                 and self.gateway.combined_serial_number != device.combined_serial_number
             ):
                 raise UnexpectedGatewayResult(
-                    f"Multiple WLAN devices returned: {self.gateway.combined_serial_number} and {device.combined_serial_number}"
+                    translation_domain=DOMAIN,
+                    translation_key="multiple_wlan_devices",
+                    translation_placeholders={
+                        "first": self.gateway.combined_serial_number,
+                        "second": device.combined_serial_number,
+                    },
                 )
 
             if info["wlan"]:
@@ -529,7 +534,11 @@ class WiserCoordinator(DataUpdateCoordinator):
         try:
             device.validate_data()
         except aiowiserbyfeller.errors.UnexpectedGatewayResponse as e:
-            raise UnexpectedGatewayResult(f"{e}") from e
+            raise UnexpectedGatewayResult(
+                translation_domain=DOMAIN,
+                translation_key="unexpected_gateway_result",
+                translation_placeholders={"error": str(e)},
+            ) from e
 
     async def async_update_rooms(self) -> None:
         """Update Wiser rooms from µGateway."""
