@@ -1,0 +1,17 @@
+services:
+  devcontainer:
+    image: mcr.microsoft.com/devcontainers/python:3.13
+    volumes:
+      - ..:/workspaces/ha-wiser-by-feller:cached
+    command: sleep infinity
+
+  homeassistant:
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile.ha
+    volumes:
+      - ../config:/config
+      - ../custom_components/wiser_by_feller:/config/custom_components/wiser_by_feller
+    ports:
+      - "8123:8123"
+    restart: unless-stopped

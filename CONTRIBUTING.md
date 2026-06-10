@@ -7,21 +7,35 @@ Thank you for your interest in contributing to the Wiser by Feller Home Assistan
 ### Prerequisites
 
 - Python 3.12+
-- A running Home Assistant instance or dev container (see `devcontainer/`)
+- A running Home Assistant instance or dev container (see `.devcontainer/`)
 
 ### Set up a development environment
+
+The recommended way to develop is via the included dev container, which runs Home Assistant in a Docker container alongside a Python workspace for linting and testing.
+
+Open the repository in VS Code and select **Reopen in Container** when prompted (requires the Dev Containers extension). VS Code attaches to the Python devcontainer; Home Assistant starts automatically as a separate container and is accessible at `http://localhost:8123`.
+
+**Viewing logs:** From the integrated terminal, run:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml logs -f homeassistant
+```
+
+**Debugger:** The `debugpy` integration is pre-configured in `config/configuration.yaml` and starts automatically on port 5678. To attach, use the **Attach to Home Assistant** configuration in the VS Code Run & Debug panel.
+
+**Rebuilding the HA image:** The HA container image has the integration's pip requirements baked in (from `manifest.json`). If you change the `requirements` field in `manifest.json`, rebuild the image before restarting:
+
+```bash
+docker compose -f .devcontainer/docker-compose.yml build homeassistant
+```
+
+For a local setup without the dev container:
 
 ```bash
 git clone https://github.com/Syonix/ha-wiser-by-feller.git
 cd ha-wiser-by-feller
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt -r requirements.dev.txt
-```
-
-Then run the setup script to prepare a local HA config directory:
-
-```bash
 ./scripts/setup.sh
 ```
 
@@ -49,7 +63,7 @@ Install the library into this repo's venv in editable mode:
 make dev
 ```
 
-Home Assistant checks installed versions against `manifest.json` at startup. By aligning the dev version in both files, HA's requirement check passes and any change to the library source is reflected immediately without reinstalling.
+This makes the editable library available to the test suite immediately. For the running HA container, rebuild the image after bumping the version in `manifest.json` (see above); HA will then install the new version from PyPI on startup.
 
 ### Switching to the published version
 
