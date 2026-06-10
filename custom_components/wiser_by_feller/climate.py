@@ -1,4 +1,4 @@
-"""Platform for button integration."""
+"""Platform for climate integration."""
 
 from __future__ import annotations
 
@@ -22,6 +22,7 @@ from .const import DOMAIN, MANUFACTURER
 from .coordinator import WiserCoordinator
 from .entity import WiserEntity
 
+PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 

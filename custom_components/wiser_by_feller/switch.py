@@ -18,6 +18,7 @@ from .const import DOMAIN
 from .coordinator import WiserCoordinator
 from .entity import WiserEntity
 
+PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 
