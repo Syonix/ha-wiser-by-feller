@@ -1,6 +1,6 @@
 """Tests for integration setup/teardown (__init__.py)."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiowiserbyfeller import UnsuccessfulRequest
 from homeassistant.config_entries import ConfigEntryState
@@ -8,7 +8,10 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 import pytest
 
-from custom_components.wiser_by_feller import async_setup_gateway
+from custom_components.wiser_by_feller import (
+    async_remove_stale_devices,
+    async_setup_gateway,
+)
 from custom_components.wiser_by_feller.const import DOMAIN
 
 # ── setup ────────────────────────────────────────────────────────────────────
@@ -86,6 +89,69 @@ async def test_setup_gateway_missing_uses_fallback(
     device = registry.async_get_device({(DOMAIN, mock_config_entry.title)})
     assert device is not None
     assert device.name == "Unknown µGateway"
+
+
+# ── stale device cleanup ──────────────────────────────────────────────────────
+
+
+async def test_remove_stale_devices_removes_orphan(
+    hass, mock_config_entry, mock_coordinator
+):
+    """Devices in the registry whose identifier is no longer in the coordinator are removed."""
+    mock_config_entry.add_to_hass(hass)
+    registry = dr.async_get(hass)
+
+    stale = registry.async_get_or_create(
+        config_entry_id=mock_config_entry.entry_id,
+        identifiers={(DOMAIN, "stale_device_001")},
+    )
+
+    mock_coordinator.loads = {}
+    mock_coordinator.devices = {}
+    mock_coordinator.hvac_groups = {}
+
+    await async_remove_stale_devices(hass, mock_config_entry, mock_coordinator)
+
+    assert registry.async_get(stale.id) is None
+
+
+async def test_remove_stale_devices_keeps_gateway(
+    hass, mock_config_entry, mock_coordinator
+):
+    """The gateway device entry is preserved when the gateway is still present."""
+    mock_config_entry.add_to_hass(hass)
+    registry = dr.async_get(hass)
+
+    gateway_device = registry.async_get_or_create(
+        config_entry_id=mock_config_entry.entry_id,
+        identifiers={(DOMAIN, mock_coordinator.gateway.combined_serial_number)},
+    )
+
+    await async_remove_stale_devices(hass, mock_config_entry, mock_coordinator)
+
+    assert registry.async_get(gateway_device.id) is not None
+
+
+async def test_remove_stale_devices_keeps_known_load(
+    hass, mock_config_entry, mock_coordinator
+):
+    """A device whose identifier matches an active load is not removed."""
+    mock_config_entry.add_to_hass(hass)
+    registry = dr.async_get(hass)
+
+    load = MagicMock()
+    load.device = "00000679"
+    load.channel = 0
+    mock_coordinator.loads = {1: load}
+
+    known = registry.async_get_or_create(
+        config_entry_id=mock_config_entry.entry_id,
+        identifiers={(DOMAIN, "00000679_0")},
+    )
+
+    await async_remove_stale_devices(hass, mock_config_entry, mock_coordinator)
+
+    assert registry.async_get(known.id) is not None
 
 
 # ── unload ────────────────────────────────────────────────────────────────────
