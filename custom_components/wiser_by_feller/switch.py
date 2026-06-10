@@ -9,6 +9,7 @@ from aiowiserbyfeller import Device, Load, OnOff, SystemFlag
 from aiowiserbyfeller.const import KIND_SWITCH
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -82,6 +83,7 @@ class WiserSystemFlag(CoordinatorEntity, SwitchEntity):
     """Entity class for system flags in the Wiser ecosystem."""
 
     _attr_has_entity_name = True
+    _attr_entity_category = EntityCategory.CONFIG
 
     def __init__(
         self,
