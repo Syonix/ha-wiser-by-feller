@@ -1,10 +1,10 @@
 {
     "name": "Syonix/ha-wiser-by-feller",
-    "image": "mcr.microsoft.com/devcontainers/python:3.13",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "devcontainer",
+    "workspaceFolder": "/workspaces/ha-wiser-by-feller",
     "postCreateCommand": "scripts/setup.sh",
-    "forwardPorts": [
-        8123
-    ],
+    "forwardPorts": [8123],
     "portsAttributes": {
         "8123": {
             "label": "Home Assistant",
@@ -18,7 +18,8 @@
                 "github.vscode-pull-request-github",
                 "ms-python.python",
                 "ms-python.vscode-pylance",
-                "ryanluker.vscode-coverage-gutters"
+                "ryanluker.vscode-coverage-gutters",
+                "ms-azuretools.vscode-docker"
             ],
             "settings": {
                 "files.eol": "\n",
@@ -38,15 +39,8 @@
     },
     "remoteUser": "vscode",
     "features": {
-        "ghcr.io/devcontainers-extra/features/apt-packages:1": {
-            "packages": [
-                "ffmpeg",
-                "libturbojpeg0",
-                "libpcap-dev"
-            ]
+        "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
+            "moby": false
         }
-    },
-    "runArgs": [
-        "--network=host"
-    ]
+    }
 }

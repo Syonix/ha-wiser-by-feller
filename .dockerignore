@@ -1,0 +1,12 @@
+.venv
+.git
+config/deps
+config/tts
+config/.storage
+config/home-assistant_v2.db*
+config/home-assistant.log*
+__pycache__
+.pytest_cache
+.ruff_cache
+dist
+include

@@ -1,0 +1,20 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Attach to Home Assistant",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "homeassistant",
+                "port": 5678
+            },
+            "pathMappings": [
+                {
+                    "localRoot": "${workspaceFolder}/custom_components/wiser_by_feller",
+                    "remoteRoot": "/config/custom_components/wiser_by_feller"
+                }
+            ]
+        }
+    ]
+}

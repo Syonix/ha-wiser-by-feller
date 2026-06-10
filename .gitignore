@@ -6,7 +6,8 @@
 .pytest*
 .ruff_cache
 .venv
-.vscode
+.vscode/*
+!.vscode/launch.json
 __pycache__
 acts
 build
@@ -16,3 +17,6 @@ junit.xml
 # Home Assistant configuration
 config/*
 !config/configuration.yaml
+
+# Integration configuration
+/custom_components/wiser_by_feller/aiowiserbyfeller
