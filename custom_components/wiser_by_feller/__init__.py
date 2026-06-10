@@ -128,6 +128,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await wiser_coordinator.async_config_entry_first_refresh()
     await async_setup_gateway(hass, entry, wiser_coordinator)
+    await async_remove_stale_devices(hass, entry, wiser_coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     async def async_set_button_led_override(call: ServiceCall) -> None:
@@ -255,6 +256,43 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.services.async_remove(DOMAIN, SERVICE_FIND_BUTTON)
 
     return unload_ok
+
+
+async def async_remove_stale_devices(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    coord: WiserCoordinator,
+) -> None:
+    """Remove device registry entries no longer present in the Wiser gateway."""
+    device_registry = dr.async_get(hass)
+
+    expected: set[str] = set()
+
+    if coord.gateway is not None:
+        expected.add(coord.gateway.combined_serial_number)
+    else:
+        expected.add(entry.title)
+
+    for load in (coord.loads or {}).values():
+        expected.add(f"{load.device}_{load.channel}")
+
+    for device in (coord.devices or {}).values():
+        expected.add(device.id)
+
+    for hvac_group in (coord.hvac_groups or {}).values():
+        if hvac_group.thermostat_ref is not None:
+            expected.add(f"{hvac_group.thermostat_ref.unprefixed_address}_hvac_group")
+
+    for device_entry in dr.async_entries_for_config_entry(
+        device_registry, entry.entry_id
+    ):
+        for domain, identifier in device_entry.identifiers:
+            if domain == DOMAIN and identifier not in expected:
+                _LOGGER.debug(
+                    "Removing stale device %s (%s)", device_entry.name, identifier
+                )
+                device_registry.async_remove_device(device_entry.id)
+                break
 
 
 async def async_setup_gateway(
