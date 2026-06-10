@@ -515,6 +515,136 @@ async def test_reauth_invalid_auth(hass: HomeAssistant, mock_setup_entry) -> Non
 
 
 # ---------------------------------------------------------------------------
+# Reconfigure flow
+# ---------------------------------------------------------------------------
+
+
+async def test_reconfigure_success(
+    hass: HomeAssistant, mock_wiser_api, mock_setup_entry
+) -> None:
+    """A valid reconfigure submission updates the host and reloads the entry."""
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={
+            "host": MOCK_HOST,
+            "token": "old-token",
+            "sn": MOCK_SN,
+            "username": MOCK_USERNAME,
+            "title": MOCK_SITE_NAME,
+        },
+        unique_id=MOCK_SN,
+    )
+    entry.add_to_hass(hass)
+
+    new_host = "192.168.1.200"
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "reconfigure"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={
+            CONF_HOST: new_host,
+            CONF_USERNAME: MOCK_USERNAME,
+            CONF_IMPORTUSER: MOCK_IMPORT_USER,
+        },
+    )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data["host"] == new_host
+    assert entry.data["token"] == MOCK_TOKEN
+
+
+async def test_reconfigure_wrong_device(hass: HomeAssistant, mock_setup_entry) -> None:
+    """Reconfigure aborts when the new address points to a different gateway."""
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"host": MOCK_HOST, "token": "old-token", "sn": MOCK_SN},
+        unique_id=MOCK_SN,
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
+    )
+
+    different_sn = "DIFFERENT000"
+    mock_api = AsyncMock()
+    mock_api.async_get_info.return_value = {
+        "sn": different_sn,
+        "hostname": "other-wiser",
+    }
+    mock_api.async_get_site_info.return_value = MOCK_SITE
+    mock_auth = AsyncMock()
+    mock_auth.claim.return_value = MOCK_TOKEN
+
+    with (
+        patch(
+            "custom_components.wiser_by_feller.config_flow.WiserByFellerAPI",
+            return_value=mock_api,
+        ),
+        patch(
+            "custom_components.wiser_by_feller.config_flow.Auth",
+            return_value=mock_auth,
+        ),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input=USER_INPUT
+        )
+
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "wrong_device"
+
+
+async def test_reconfigure_cannot_connect(
+    hass: HomeAssistant, mock_setup_entry
+) -> None:
+    """A connection failure during reconfigure shows the cannot_connect error."""
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={"host": MOCK_HOST, "token": "old-token", "sn": MOCK_SN},
+        unique_id=MOCK_SN,
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
+    )
+
+    with patch(
+        "custom_components.wiser_by_feller.config_flow.WiserByFellerAPI",
+        side_effect=CannotConnect,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input=USER_INPUT
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
+
+
+# ---------------------------------------------------------------------------
 # Options flow
 # ---------------------------------------------------------------------------
 

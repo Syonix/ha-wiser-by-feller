@@ -16,6 +16,20 @@
           "import_user": "The user to import existing Wiser configuration from (like scenes, rooms and load names). If you don't have any other systems using the API, you can choose between 'installer' (Wiser eSetup app) and 'admin' (Wiser Home app)."
         }
       },
+      "reconfigure": {
+        "title": "Reconfigure Wiser by Feller \u00b5Gateway",
+        "description": "Update the connection details for your \u00b5Gateway. Press any flashing button on the device within 30 seconds to reconnect.",
+        "data": {
+          "host": "Host",
+          "username": "Username",
+          "import_user": "Import config from"
+        },
+        "data_description": {
+          "host": "The new hostname or IP address of your \u00b5Gateway.",
+          "username": "The username to be used for the API.",
+          "import_user": "The user to import existing Wiser configuration from."
+        }
+      },
       "reauth_confirm": {
         "title": "Reconnect Wiser by Feller \u00b5Gateway",
         "description": "Enter the IP address of your \u00b5Gateway and click submit. The buttons should start to flash pink and purple. Press any of the flashing buttons on the \u00b5Gateway within 30 seconds to connect your Home Assistant instance.",
@@ -36,7 +50,8 @@
       "already_configured": "Device is already configured",
       "already_in_progress": "Configuration flow is already in progress",
       "no_gateways": "No Wiser \u00b5Gateways discovered",
-      "not_wiser_gateway": "The device you're trying to connect to is not a Wiser \u00b5Gateway. Are you sure you've entered the correct hostname or IP?"
+      "not_wiser_gateway": "The device you're trying to connect to is not a Wiser \u00b5Gateway. Are you sure you've entered the correct hostname or IP?",
+      "wrong_device": "The device at the new address has a different serial number. Use this flow only to update the address of the same \u00b5Gateway."
     },
     "error": {
       "cannot_connect": "Failed to connect",
