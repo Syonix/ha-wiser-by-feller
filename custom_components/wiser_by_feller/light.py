@@ -22,6 +22,7 @@ from .coordinator import WiserCoordinator
 from .entity import WiserEntity
 from .util import brightness_to_wiser, wiser_to_brightness
 
+PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 

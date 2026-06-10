@@ -28,6 +28,7 @@ from .util import (
     wiser_to_cover_tilt,
 )
 
+PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 

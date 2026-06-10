@@ -13,6 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .coordinator import WiserCoordinator
 
+PARALLEL_UPDATES = 0
 _LOGGER = logging.getLogger(__name__)
 
 
