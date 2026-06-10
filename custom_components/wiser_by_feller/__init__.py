@@ -18,6 +18,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.translation import async_get_translations
 import voluptuous as vol
@@ -83,6 +84,25 @@ CLEAR_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
 )
 
 
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up the Wiser by Feller integration."""
+
+    async def handle_status_light(call: ServiceCall) -> None:
+        device_registry = dr.async_get(hass)
+        device = device_registry.async_get(call.data["device"])
+        if device is None:
+            return
+        for entry_id in device.config_entries:
+            entry = hass.config_entries.async_get_entry(entry_id)
+            if entry and entry.domain == DOMAIN and entry.runtime_data is not None:
+                coordinator: WiserCoordinator = entry.runtime_data
+                await coordinator.async_set_status_light(call)
+                return
+
+    hass.services.async_register(DOMAIN, SERVICE_STATUS_LIGHT, handle_status_light)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Wiser by Feller from a config entry."""
     session = async_get_clientsession(hass)
@@ -99,10 +119,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await wiser_coordinator.async_config_entry_first_refresh()
     await async_setup_gateway(hass, entry, wiser_coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    hass.services.async_register(
-        DOMAIN, SERVICE_STATUS_LIGHT, wiser_coordinator.async_set_status_light
-    )
 
     async def async_set_button_led_override(call: ServiceCall) -> None:
         """Set button LED override."""
@@ -224,7 +240,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.ws_close()
 
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.services.async_remove(DOMAIN, SERVICE_STATUS_LIGHT)
         hass.services.async_remove(DOMAIN, SERVICE_SET_BUTTON_LED_OVERRIDE)
         hass.services.async_remove(DOMAIN, SERVICE_CLEAR_BUTTON_LED_OVERRIDE)
         hass.services.async_remove(DOMAIN, SERVICE_FIND_BUTTON)
