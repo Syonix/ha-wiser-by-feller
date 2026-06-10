@@ -205,7 +205,64 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "username": user_input[CONF_USERNAME],
         }
 
-    async def async_step_reauth(self, entry_data: list[str, Any]):
+    async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
+        """Handle reconfiguration of an existing entry (e.g. host IP changed)."""
+        reconfigure_entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            try:
+                info = await self.validate_input(self.hass, user_input, True)
+            except (CannotConnect, UnsuccessfulRequest) as e:
+                err = str(e)
+                if "not a directory" in err:
+                    errors["base"] = "invalid_import_user"
+                elif "no site info" in err:
+                    errors["base"] = "no_site_info"
+                else:
+                    errors["base"] = "cannot_connect"
+                _LOGGER.exception("Failed to connect: %s", err)
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+                _LOGGER.exception("Invalid authentication")
+            except ClientResponseError as e:
+                if e.status == 404:
+                    return self.async_abort(reason="not_wiser_gateway")
+                errors["base"] = "cannot_connect"
+                _LOGGER.exception("Unexpected exception")
+            except ConnectionTimeoutError:
+                errors["base"] = "connection_timeout"
+                _LOGGER.exception("Connection timeout")
+            except Exception:
+                _LOGGER.exception("Unexpected exception")
+                errors["base"] = "unknown"
+            else:
+                self._abort_if_unique_id_mismatch(reason="wrong_device")
+                return self.async_update_reload_and_abort(reconfigure_entry, data=info)
+
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_HOST,
+                        default=reconfigure_entry.data.get(CONF_HOST),
+                    ): cv.string,
+                    vol.Required(
+                        CONF_USERNAME,
+                        default=reconfigure_entry.data.get(
+                            CONF_USERNAME, DEFAULT_API_USER
+                        ),
+                    ): cv.string,
+                    vol.Required(
+                        CONF_IMPORTUSER, default=DEFAULT_IMPORT_USER
+                    ): cv.string,
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_reauth(self, entry_data: dict[str, Any]):
         """Handle configuration by re-auth."""
         self._reauth_entry_data = entry_data
         self._reauth_entry = self.hass.config_entries.async_get_entry(
