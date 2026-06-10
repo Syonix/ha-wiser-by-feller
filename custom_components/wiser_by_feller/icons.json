@@ -1,0 +1,29 @@
+{
+  "entity": {
+    "sensor": {
+      "wlan_resets": {
+        "default": "mdi:wifi-alert"
+      },
+      "max_tasks": {
+        "default": "mdi:list-box-outline"
+      },
+      "reboot_cause": {
+        "default": "mdi:restart-alert"
+      },
+      "sockets": {
+        "default": "mdi:arrow-expand-horizontal"
+      },
+      "last_reboot": {
+        "default": "mdi:clock-start"
+      }
+    },
+    "binary_sensor": {
+      "rain": {
+        "default": "mdi:weather-rainy"
+      },
+      "hail": {
+        "default": "mdi:weather-hail"
+      }
+    }
+  }
+}

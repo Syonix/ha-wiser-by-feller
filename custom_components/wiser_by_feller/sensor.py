@@ -96,13 +96,11 @@ GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
     GatewaySensorEntityDescription(
         key="wlan_resets",
         state_class=SensorStateClass.TOTAL,
-        icon="mdi:wifi-alert",
         value_fn=lambda data: data.get("wlan_resets"),
     ),
     GatewaySensorEntityDescription(
         key="max_tasks",
         state_class=SensorStateClass.TOTAL,
-        icon="mdi:list-box-outline",
         value_fn=lambda data: data.get("max_tasks"),
     ),
     GatewaySensorEntityDescription(
@@ -114,13 +112,11 @@ GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
     ),
     GatewaySensorEntityDescription(
         key="reboot_cause",
-        icon="mdi:restart-alert",
         value_fn=lambda data: data.get("reboot_cause"),
     ),
     GatewaySensorEntityDescription(
         key="sockets",
         state_class=SensorStateClass.TOTAL,
-        icon="mdi:arrow-expand-horizontal",
         value_fn=lambda data: data.get("sockets"),
     ),
 )
@@ -244,7 +240,6 @@ class WiserLastRebootEntity(CoordinatorEntity, SensorEntity):
         self._attr_entity_category = EntityCategory.DIAGNOSTIC
         self._attr_device_class = SensorDeviceClass.TIMESTAMP
         self._attr_has_entity_name = True
-        self._attr_icon = "mdi:clock-start"
 
     @property
     def native_value(self) -> datetime:
@@ -377,7 +372,6 @@ class WiserRainSensorEntity(WiserSensorEntity, BinarySensorEntity):
         super().__init__(coordinator, device, room, sensor)
         self._attr_unique_id = f"{self._attr_raw_unique_id}_rain"
         self._attr_translation_key = "rain"
-        self._attr_icon = "mdi:weather-rainy"
 
     @property
     def is_on(self) -> bool | None:
@@ -393,7 +387,6 @@ class WiserHailSensorEntity(WiserSensorEntity, BinarySensorEntity):
         super().__init__(coordinator, device, room, sensor)
         self._attr_unique_id = f"{self._attr_raw_unique_id}_hail"
         self._attr_translation_key = "hail"
-        self._attr_icon = "mdi:weather-hail"
 
     @property
     def is_on(self) -> bool | None:
