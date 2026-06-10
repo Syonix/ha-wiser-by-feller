@@ -88,16 +88,26 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Wiser by Feller integration."""
 
     async def handle_status_light(call: ServiceCall) -> None:
+        device_id = call.data["device"]
         device_registry = dr.async_get(hass)
-        device = device_registry.async_get(call.data["device"])
+        device = device_registry.async_get(device_id)
         if device is None:
-            return
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="device_not_found",
+                translation_placeholders={"device_id": device_id},
+            )
         for entry_id in device.config_entries:
             entry = hass.config_entries.async_get_entry(entry_id)
             if entry and entry.domain == DOMAIN and entry.runtime_data is not None:
                 coordinator: WiserCoordinator = entry.runtime_data
                 await coordinator.async_set_status_light(call)
                 return
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="device_not_found",
+            translation_placeholders={"device_id": device_id},
+        )
 
     hass.services.async_register(DOMAIN, SERVICE_STATUS_LIGHT, handle_status_light)
     return True

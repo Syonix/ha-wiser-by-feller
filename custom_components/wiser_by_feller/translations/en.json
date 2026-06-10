@@ -153,6 +153,17 @@
       "description": "Sensor \"{item_name}\" (ID: {item_id}) has an unknown type \"{item_type}\" and is not supported by this integration. It will be ignored until support is added.\n\nIf you are using pre-production devices, please report this sensor type to the integration maintainers so it can be added."
     }
   },
+  "exceptions": {
+    "device_not_found": {
+      "message": "Device {device_id} was not found."
+    },
+    "invalid_channel": {
+      "message": "Channel {channel} does not exist on this device."
+    },
+    "status_light_failed": {
+      "message": "Failed to set status light: {error}"
+    }
+  },
   "services": {
     "status_light": {
       "name": "Configure status light",
