@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 from homeassistant.helpers.service_info.zeroconf import ZeroconfServiceInfo
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.wiser_by_feller.const import CONF_IMPORTUSER, DOMAIN
 from custom_components.wiser_by_feller.exceptions import CannotConnect, InvalidAuth
@@ -405,8 +406,6 @@ async def test_reauth_success(
     hass: HomeAssistant, mock_wiser_api, mock_setup_entry
 ) -> None:
     """A valid reauth submission updates the config entry."""
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
-
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -439,8 +438,6 @@ async def test_reauth_success(
 
 async def test_reauth_cannot_connect(hass: HomeAssistant, mock_setup_entry) -> None:
     """A connection failure during reauth shows the cannot_connect error."""
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
-
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -474,8 +471,6 @@ async def test_reauth_cannot_connect(hass: HomeAssistant, mock_setup_entry) -> N
 
 async def test_reauth_invalid_auth(hass: HomeAssistant, mock_setup_entry) -> None:
     """An auth failure during reauth shows the invalid_auth error."""
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
-
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
