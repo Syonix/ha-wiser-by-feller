@@ -464,3 +464,32 @@ def test_resolve_button_fields_scene_none_when_button_has_no_job(coordinator):
     coordinator._rooms = {}
     coordinator._scenes = {1: _make_scene_for_coord(job_id=100)}
     assert coordinator.resolve_managed_button_fields(1)["scene_name"] is None
+
+
+async def test_ws_idle_logs_warning_once(coordinator, mock_api, caplog):
+    """WebSocket idle triggers a warning only on the first detection, not every poll."""
+    coordinator._ws.is_idle.return_value = True
+
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        await coordinator._async_update_data()
+        await coordinator._async_update_data()
+
+    warnings = [r for r in caplog.records if "idle" in r.message.lower()]
+    assert len(warnings) == 1
+    assert coordinator._ws_was_idle is True
+
+
+async def test_ws_idle_recovery_logs_info(coordinator, mock_api, caplog):
+    """After being idle, a successful reconnect logs an info recovery message."""
+    coordinator._ws_was_idle = True
+    coordinator._ws.is_idle.return_value = False
+
+    import logging
+
+    with caplog.at_level(logging.INFO):
+        await coordinator._async_update_data()
+
+    assert coordinator._ws_was_idle is False
+    assert any("re-established" in r.message.lower() for r in caplog.records)

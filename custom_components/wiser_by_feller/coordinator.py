@@ -86,6 +86,7 @@ class WiserCoordinator(DataUpdateCoordinator):
         self._managed_buttons = None
         self._findme_button_future: asyncio.Future | None = None
         self._ws = Websocket(host, token, _LOGGER)
+        self._ws_was_idle = False
 
     @property
     def loads(self) -> dict[int, Load] | None:
@@ -406,12 +407,17 @@ class WiserCoordinator(DataUpdateCoordinator):
 
             # Reconnect WebSocket if it has died
             if self._ws.is_idle():
-                _LOGGER.warning(
-                    "WebSocket connection to µGateway is idle/disconnected. Reconnecting..."
-                )
+                if not self._ws_was_idle:
+                    _LOGGER.warning(
+                        "WebSocket connection to µGateway is idle/disconnected. Reconnecting..."
+                    )
+                    self._ws_was_idle = True
                 await self.ws_close()
                 self._ws.reset_error_count()
                 self._ws.init()
+            elif self._ws_was_idle:
+                _LOGGER.info("WebSocket connection to µGateway re-established.")
+                self._ws_was_idle = False
 
         except asyncio.TimeoutError as err:
             raise UpdateFailed("Timeout while fetching data from µGateway") from err
