@@ -162,6 +162,12 @@
     },
     "status_light_failed": {
       "message": "Failed to set status light: {error}"
+    },
+    "unexpected_gateway_result": {
+      "message": "Unexpected response from the µGateway: {error}"
+    },
+    "multiple_wlan_devices": {
+      "message": "Multiple WLAN devices found in the same network: {first} and {second}. Only one µGateway per network is supported."
     }
   },
   "services": {
