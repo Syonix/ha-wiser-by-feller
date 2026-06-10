@@ -15,6 +15,7 @@ from aiowiserbyfeller import (
     WiserByFellerAPI,
 )
 from homeassistant import config_entries
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_HOST, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import AbortFlow
@@ -56,8 +57,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
     MINOR_VERSION = 1
 
-    _reauth_entry: list[str, Any]
-    _reauth_entry_data: list[str, Any]
+    _reauth_entry: ConfigEntry
+    _reauth_entry_data: dict[str, Any]
     _discovered_host: str | None = None
     _discovered_name: str | None = None
 
