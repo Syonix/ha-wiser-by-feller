@@ -79,6 +79,68 @@ This installs the exact version currently pinned in `manifest.json`. Revert any 
 
 Keep `pyproject.toml` at `X.Y.Z.dev0` and `manifest.json` at `X.Y.Z.dev0` on the working branch. The `.dev0` suffix signals that the library has unpublished changes; remove it from both files once the library is published and before running release-it.
 
+## Testing
+
+### Dependencies
+
+The test suite uses [`pytest-homeassistant-custom-component`](https://github.com/MatthewFlamm/pytest-homeassistant-custom-component), which provides the same test infrastructure that Home Assistant core uses — including the `hass` fixture, `MockConfigEntry`, and the custom-integration loader. All test dependencies are in `requirements.test.txt`; `./scripts/setup.sh` installs them automatically.
+
+### Running the tests
+
+```bash
+# Run everything
+pytest
+
+# Run a single module
+pytest tests/test_coordinator.py -v
+
+# Run a specific test
+pytest tests/test_light.py::test_dim_brightness_conversion -v
+
+# Run with coverage (terminal summary)
+pytest --cov=custom_components/wiser_by_feller --cov-report=term-missing
+
+# Run with HTML coverage report
+pytest --cov=custom_components/wiser_by_feller --cov-report=html
+open htmlcov/index.html
+```
+
+### Test structure
+
+| File | What it covers |
+|---|---|
+| `tests/conftest.py` | Shared fixtures: `hass`, `mock_config_entry`, `mock_coordinator`, `mock_gateway`, `setup_integration` |
+| `tests/test_init.py` | Integration setup/teardown, gateway device registration, service registration |
+| `tests/test_coordinator.py` | `WiserCoordinator`: error handling, lazy loading, unknown-type issue creation, WebSocket state updates |
+| `tests/test_util.py` | Pure utility functions: brightness/cover/tilt conversion, colour helpers, device name resolution |
+| `tests/test_light.py` | Light platform: OnOff, Dim, DimTW, DimRGBW entities |
+| `tests/test_cover.py` | Cover platform: relay, positional, venetian blind (tilt) entities |
+| `tests/test_climate.py` | Climate platform: HVAC group entities, mode/action/temperature handling |
+| `tests/test_sensor.py` | Sensor platform: gateway health sensors, device sensors, binary rain/hail sensors |
+| `tests/test_switch.py` | Switch platform: system flag entities |
+| `tests/test_button.py` | Button platform: ping, impulse, and climate-ping entities |
+| `tests/test_scene.py` | Scene platform: scene entities, job filtering |
+| `tests/test_diagnostics.py` | Diagnostic output, redaction of serial numbers and tokens |
+| `tests/test_config_flow.py` | Config flow: discovery, user step, re-auth |
+
+### Shared fixtures
+
+`conftest.py` provides these fixtures for all test files:
+
+- **`hass`** — a real (in-process) Home Assistant instance, provided by `pytest-homeassistant-custom-component`
+- **`mock_config_entry`** — a `MockConfigEntry` pre-configured for the `wiser_by_feller` domain
+- **`mock_gateway`** — a `MagicMock` representing the µGateway device with realistic string attributes
+- **`mock_coordinator`** — a `MagicMock(spec=WiserCoordinator)` with all data stores pre-populated as empty dicts/lists; tests override individual stores as needed
+- **`setup_integration`** — calls `hass.config_entries.async_setup(...)` with the mocked coordinator and returns the loaded config entry
+
+For unit tests that don't need a full HA stack (e.g. entity property tests), instantiate entity classes directly — it's faster and simpler.
+
+### Writing new tests
+
+- Use `MagicMock(spec=<ApiClass>)` for load/device/sensor objects; set only the attributes your test exercises.
+- Always set `load.name` to a plain string — `resolve_device_name()` reads it and the HA device registry will reject a `MagicMock` value during teardown.
+- For full-stack platform tests (those that call `hass.config_entries.async_setup`), use the `mock_config_entry` and `mock_coordinator` fixtures and patch `Auth`, `WiserByFellerAPI`, and `WiserCoordinator` in `custom_components.wiser_by_feller`.
+
 ## Before committing
 
 Run ruff to format and lint the code — the CI pipeline enforces both checks and will block your PR if they fail:
