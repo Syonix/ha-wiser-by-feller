@@ -180,6 +180,11 @@ class WiserCoordinator(DataUpdateCoordinator):
         """State if the µGateway supports HVAC groups (Gen B)."""
         return self.is_gen_b
 
+    @property
+    def api(self) -> WiserByFellerAPI:
+        """Wiser by Feller API."""
+        return self._api
+
     async def async_set_status_light(self, call: ServiceCall) -> bool:
         """Set the button illumination for a channel of a specific device."""
 
