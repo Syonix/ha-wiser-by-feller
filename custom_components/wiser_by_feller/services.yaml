@@ -36,4 +36,74 @@ status_light:
           min: 0
           max: 255
 
+set_button_led_override:
+  name: Set Button LED Override
+  description: Set a temporary LED override on a Wiser button LED.
+  fields:
+    button_id:
+      name: Button ID
+      description: Wiser button ID.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box
+
+    led_index:
+      name: LED Index
+      description: LED index on the button (typically 0 or 1).
+      required: true
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 1
+          mode: box
+
+    rgb_color:
+      name: RGB Color
+      description: LED color.
+      required: true
+      selector:
+        color_rgb:
+
+    effect:
+      name: Effect
+      description: LED blink pattern.
+      required: false
+      default: permanent
+      selector:
+        select:
+          options:
+            - permanent
+            - ramp
+            - ramp_up
+            - ramp_down
+            - slow
+            - fast
+
+clear_button_led_override:
+  name: Clear Button LED Override
+  description: Disable the temporary LED override and return to the configured Wiser LED behavior.
+  fields:
+    button_id:
+      name: Button ID
+      description: Wiser button ID.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box
+
+    led_index:
+      name: LED Index
+      description: LED index on the button (typically 0 or 1).
+      required: true
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 1
+          mode: box
+
       # TODO: https://www.home-assistant.io/docs/blueprint/selectors/#translation_key
