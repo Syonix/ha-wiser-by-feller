@@ -1,6 +1,7 @@
 """The Wiser by Feller integration."""
 
 from __future__ import annotations
+from typing import Any
 
 import logging
 
@@ -11,6 +12,12 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from aiowiserbyfeller.enum import BlinkPattern
+from homeassistant.components.light import ATTR_RGB_COLOR
+from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.exceptions import HomeAssistantError
+import homeassistant.helpers.config_validation as cv
+import voluptuous as vol
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import WiserCoordinator
@@ -27,6 +34,46 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
 ]
 
+SERVICE_SET_BUTTON_LED_OVERRIDE = "set_button_led_override"
+SERVICE_CLEAR_BUTTON_LED_OVERRIDE = "clear_button_led_override"
+
+ATTR_BUTTON_ID = "button_id"
+ATTR_LED_INDEX = "led_index"
+ATTR_EFFECT = "effect"
+
+def rgb_tuple_to_hex(rgb: tuple[int, int, int]) -> str:
+    """Convert RGB tuple to hex color."""
+    return "#{:02x}{:02x}{:02x}".format(*rgb)
+
+def validate_rgb_color(value: Any) -> tuple[int, int, int]:
+    """Validate RGB color."""
+    if not isinstance(value, list | tuple) or len(value) != 3:
+        raise vol.Invalid("RGB color must be a list of three integers")
+
+    rgb = tuple(int(color) for color in value)
+    if any(color < 0 or color > 255 for color in rgb):
+        raise vol.Invalid("RGB values must be between 0 and 255")
+
+    return rgb
+
+
+SET_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_BUTTON_ID): cv.positive_int,
+        vol.Required(ATTR_LED_INDEX, default=0): cv.positive_int,
+        vol.Required(ATTR_RGB_COLOR, default=(0, 255, 0)): validate_rgb_color,
+        vol.Required(ATTR_EFFECT, default=BlinkPattern.PERMANENT.value): vol.In(
+            [pattern.value for pattern in BlinkPattern]
+        ),
+    }
+)
+
+CLEAR_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_BUTTON_ID): cv.positive_int,
+        vol.Required(ATTR_LED_INDEX, default=0): cv.positive_int,
+    }
+)
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Wiser by Feller from a config entry."""
@@ -51,6 +98,40 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     return True
 
+async def async_set_button_led_override(call: ServiceCall) -> None:
+    """Set button LED override."""
+    await wiser_coordinator.api.async_set_button_led(
+        button_id=call.data[ATTR_BUTTON_ID],
+        led_index=call.data[ATTR_LED_INDEX],
+        on=True,
+        pattern=BlinkPattern(call.data[ATTR_EFFECT]),
+        color=rgb_tuple_to_hex(call.data[ATTR_RGB_COLOR]),
+    )
+
+async def async_clear_button_led_override(call: ServiceCall) -> None:
+    """Clear button LED override."""
+    await wiser_coordinator.api.async_set_button_led(
+        button_id=call.data[ATTR_BUTTON_ID],
+        led_index=call.data[ATTR_LED_INDEX],
+        on=False,
+        pattern=BlinkPattern.PERMANENT,
+        color="#000000",
+    )
+    
+hass.services.async_register(
+    DOMAIN,
+    SERVICE_SET_BUTTON_LED_OVERRIDE,
+    async_set_button_led_override,
+    schema=SET_BUTTON_LED_OVERRIDE_SCHEMA,
+)
+
+hass.services.async_register(
+    DOMAIN,
+    SERVICE_CLEAR_BUTTON_LED_OVERRIDE,
+    async_clear_button_led_override,
+    schema=CLEAR_BUTTON_LED_OVERRIDE_SCHEMA,
+)
+
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
@@ -59,6 +140,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         hass.services.async_remove(DOMAIN, "status_light")
+        hass.services.async_remove(DOMAIN, SERVICE_SET_BUTTON_LED_OVERRIDE)
+        hass.services.async_remove(DOMAIN, SERVICE_CLEAR_BUTTON_LED_OVERRIDE)
 
     return unload_ok
 
