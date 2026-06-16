@@ -119,6 +119,15 @@ data:
 - In the current implementation of the Wiser ecosystem it is not possible to configure different colors for the "on" and "off" state.
 - Note that updating the configuration can take up to multiple seconds as there are multiple slow API calls involved.
 
+### 🚨 Button LED Actions
+
+Supported Wiser buttons can expose their integrated LED indicators through Home Assistant actions when LED control is enabled on the Wiser Gateway.
+The actions set or clear a temporary LED override. Clearing the override returns the button LED to its configured Wiser behavior.
+
+Available actions:
+- `wiser_by_feller.set_button_led_override`
+- `wiser_by_feller.clear_button_led_override`
+
 ### 🧰 Housekeeping
 The integration automatically prompts you to re-connect if there is any authentication error.
 
