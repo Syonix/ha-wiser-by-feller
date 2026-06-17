@@ -32,6 +32,11 @@ async def async_setup_entry(
 
     coordinator: WiserCoordinator = entry.runtime_data
 
+    assert coordinator.loads is not None
+    assert coordinator.states is not None
+    assert coordinator.devices is not None
+    assert coordinator.rooms is not None
+
     entities: list = [
         WiserSystemFlag(coordinator, flag) for flag in coordinator.system_flags or []
     ]
@@ -53,8 +58,14 @@ async def async_setup_entry(
 class WiserOnOffSwitchEntity(WiserEntity, SwitchEntity):
     """Entity class for simple on/off switches configured as such in the Wiser ecosystem (outlets, fans, etc.)."""
 
+    _load: Load
+
     def __init__(
-        self, coordinator: WiserCoordinator, load: Load, device: Device, room: dict
+        self,
+        coordinator: WiserCoordinator,
+        load: Load,
+        device: Device,
+        room: dict | None,
     ) -> None:
         """Set up Wiser on/off switch entity."""
         super().__init__(coordinator, load, device, room)
@@ -79,7 +90,7 @@ class WiserOnOffSwitchEntity(WiserEntity, SwitchEntity):
         self._load.raw_state["bri"] = 0
 
 
-class WiserSystemFlag(CoordinatorEntity, SwitchEntity):
+class WiserSystemFlag(CoordinatorEntity["WiserCoordinator"], SwitchEntity):
     """Entity class for system flags in the Wiser ecosystem."""
 
     _attr_has_entity_name = True
@@ -100,6 +111,7 @@ class WiserSystemFlag(CoordinatorEntity, SwitchEntity):
                 "Please fix the root cause and disable the option."
             )
 
+        assert coordinator.config_entry is not None
         gateway = (
             coordinator.gateway.combined_serial_number
             if coordinator.gateway is not None

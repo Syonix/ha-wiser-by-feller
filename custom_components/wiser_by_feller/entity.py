@@ -12,7 +12,7 @@ from .coordinator import WiserCoordinator, get_unique_id
 from .util import resolve_device_name
 
 
-class WiserEntity(CoordinatorEntity):
+class WiserEntity(CoordinatorEntity["WiserCoordinator"]):
     """Wiser by Feller base entity."""
 
     def __init__(
@@ -76,13 +76,13 @@ class WiserEntity(CoordinatorEntity):
             else self._device.a["fw_version"]
         )
         area = None if self._room is None else self._room["name"]
-        via = (
-            (DOMAIN, self.coordinator.gateway.combined_serial_number)
+        via: tuple[str, str] | None = (
+            (DOMAIN, str(self.coordinator.gateway.combined_serial_number))
             if self.coordinator.gateway is not None
             else None
         )
 
-        return DeviceInfo(
+        info = DeviceInfo(
             identifiers={
                 (
                     DOMAIN,
@@ -96,11 +96,14 @@ class WiserEntity(CoordinatorEntity):
             sw_version=firmware,
             serial_number=self._device.combined_serial_number,
             suggested_area=area,
-            via_device=via,
         )
+        if via is not None:
+            info["via_device"] = via
+        return info
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated entity data from the coordinator."""
-        self._load.raw_state = self.coordinator.states.get(self._load.id)
+        if self._load is not None and self.coordinator.states is not None:
+            self._load.raw_state = self.coordinator.states.get(self._load.id)
         self.async_write_ha_state()

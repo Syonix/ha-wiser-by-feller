@@ -131,10 +131,13 @@ async def async_setup_entry(
 
     coordinator: WiserCoordinator = entry.runtime_data
 
-    entities = [
+    assert coordinator.devices is not None
+    assert coordinator.states is not None
+    assert coordinator.rooms is not None
+    entities: list[SensorEntity | BinarySensorEntity] = [
         WiserSystemHealthEntity(coordinator, description)
         for description in GW_SENSORS
-        if coordinator.gateway_api_major_version >= description.min_api_version
+        if (coordinator.gateway_api_major_version or 0) >= description.min_api_version
     ]
 
     entities.append(WiserLastRebootEntity(coordinator))
@@ -189,7 +192,7 @@ async def async_setup_entry(
 
 
 # TODO: Is this compatible with iot_class local_push?
-class WiserSystemHealthEntity(CoordinatorEntity, SensorEntity):
+class WiserSystemHealthEntity(CoordinatorEntity["WiserCoordinator"], SensorEntity):
     """A Wiser µGateway system health sensor entity."""
 
     entity_description: GatewaySensorEntityDescription
@@ -203,6 +206,7 @@ class WiserSystemHealthEntity(CoordinatorEntity, SensorEntity):
     ) -> None:
         """Set up the entity."""
         super().__init__(coordinator, entity_description)
+        assert coordinator.gateway is not None
         self.gateway = coordinator.gateway.combined_serial_number
         slugify_gateway = slugify(f"{self.gateway}", separator="_")
         self.entity_description = entity_description
@@ -212,7 +216,7 @@ class WiserSystemHealthEntity(CoordinatorEntity, SensorEntity):
         self.coordinator_context = f"{slugify_gateway}_{entity_description.key}"
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, self.gateway)})
         self._attr_native_value = self.entity_description.value_fn(
-            self.coordinator.system_health
+            self.coordinator.system_health or {}
         )
 
     @callback
@@ -220,16 +224,17 @@ class WiserSystemHealthEntity(CoordinatorEntity, SensorEntity):
         """Handle updated data from the coordinator."""
         super()._handle_coordinator_update()
         self._attr_native_value = self.entity_description.value_fn(
-            self.coordinator.system_health
+            self.coordinator.system_health or {}
         )
 
 
-class WiserLastRebootEntity(CoordinatorEntity, SensorEntity):
+class WiserLastRebootEntity(CoordinatorEntity["WiserCoordinator"], SensorEntity):
     """A Wiser µGateway system health sensor entity to return the last reboot."""
 
     def __init__(self, coordinator: WiserCoordinator) -> None:
         """Set up the entity."""
         super().__init__(coordinator)
+        assert coordinator.gateway is not None
         self.gateway = coordinator.gateway.combined_serial_number
         slugify_gateway = slugify(f"{self.gateway}", separator="_")
         self._attr_translation_key = "last_reboot"
@@ -249,6 +254,7 @@ class WiserLastRebootEntity(CoordinatorEntity, SensorEntity):
         which is not ideal. Therefore, we calculate the timestamp of the last reboot. We return the new value only,
         if it differs more than the configured threshold.
         """
+        assert self.coordinator.system_health is not None
         new_value = dt_util.utcnow() - dt_util.dt.timedelta(
             seconds=self.coordinator.system_health["uptime"]
         )
@@ -292,9 +298,10 @@ class WiserSensorEntity(WiserEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        state = self.coordinator.states.get(self._sensor.id)
-        if state is not None:
-            self._sensor.raw_data = state
+        if self.coordinator.states is not None:
+            state = self.coordinator.states.get(self._sensor.id)
+            if state is not None:
+                self._sensor.raw_data = state
         self.async_write_ha_state()
 
 

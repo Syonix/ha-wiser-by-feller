@@ -40,7 +40,11 @@ async def async_setup_entry(
     """Set up Wiser cover entities."""
     coordinator: WiserCoordinator = entry.runtime_data
 
-    entities = []
+    assert coordinator.loads is not None
+    assert coordinator.states is not None
+    assert coordinator.devices is not None
+    assert coordinator.rooms is not None
+    entities: list[WiserEntity] = []
     for load in coordinator.loads.values():
         load.raw_state = coordinator.states[load.id]
         device = coordinator.devices[load.device]
@@ -60,8 +64,14 @@ async def async_setup_entry(
 class WiserRelayEntity(WiserEntity, CoverEntity):
     """Wiser entity class for basic motor entities."""
 
+    _load: Load
+
     def __init__(
-        self, coordinator: WiserCoordinator, load: Load, device: Device, room: dict
+        self,
+        coordinator: WiserCoordinator,
+        load: Load,
+        device: Device,
+        room: dict | None,
     ) -> None:
         """Set up the relay entity."""
         super().__init__(coordinator, load, device, room)
@@ -72,7 +82,7 @@ class WiserRelayEntity(WiserEntity, CoverEntity):
 
         # There is no suitable default for "motor", so we use shade.
         self._attr_device_class = CoverDeviceClass.SHADE
-        self._tracking_task = None
+        self._tracking_task: asyncio.Task[None] | None = None
 
     @property
     def is_closed(self) -> bool | None:
@@ -165,7 +175,11 @@ class WiserCoverEntity(WiserRelayEntity, CoverEntity):
     """Wiser entity class for non-tiltable covers like shades and awnings."""
 
     def __init__(
-        self, coordinator: WiserCoordinator, load: Load, device: Device, room: dict
+        self,
+        coordinator: WiserCoordinator,
+        load: Load,
+        device: Device,
+        room: dict | None,
     ) -> None:
         """Set up Wiser cover entity."""
         super().__init__(coordinator, load, device, room)
@@ -207,7 +221,11 @@ class WiserTiltableCoverEntity(WiserCoverEntity, CoverEntity):
     """Wiser entity class for tiltable covers like venetian blinds."""
 
     def __init__(
-        self, coordinator: WiserCoordinator, load: Load, device: Device, room: dict
+        self,
+        coordinator: WiserCoordinator,
+        load: Load,
+        device: Device,
+        room: dict | None,
     ) -> None:
         """Set up Wiser tiltable cover entity."""
         super().__init__(coordinator, load, device, room)

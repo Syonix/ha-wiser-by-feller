@@ -180,3 +180,6 @@ max-complexity = 25
 
 [tool.ruff.lint.pydocstyle]
 property-decorators = ["propcache.api.cached_property"]
+
+[tool.mypy]
+ignore_missing_imports = true
