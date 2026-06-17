@@ -523,8 +523,6 @@ async def test_reconfigure_success(
     hass: HomeAssistant, mock_wiser_api, mock_setup_entry
 ) -> None:
     """A valid reconfigure submission updates the host and reloads the entry."""
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
-
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={
@@ -566,8 +564,6 @@ async def test_reconfigure_success(
 
 async def test_reconfigure_wrong_device(hass: HomeAssistant, mock_setup_entry) -> None:
     """Reconfigure aborts when the new address points to a different gateway."""
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
-
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={"host": MOCK_HOST, "token": "old-token", "sn": MOCK_SN},
@@ -615,8 +611,6 @@ async def test_reconfigure_cannot_connect(
     hass: HomeAssistant, mock_setup_entry
 ) -> None:
     """A connection failure during reconfigure shows the cannot_connect error."""
-    from pytest_homeassistant_custom_component.common import MockConfigEntry
-
     entry = MockConfigEntry(
         domain=DOMAIN,
         data={"host": MOCK_HOST, "token": "old-token", "sn": MOCK_SN},

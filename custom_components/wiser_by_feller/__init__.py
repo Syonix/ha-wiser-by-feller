@@ -18,9 +18,9 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
-from homeassistant.helpers.typing import ConfigType
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.translation import async_get_translations
+from homeassistant.helpers.typing import ConfigType
 import voluptuous as vol
 
 from .const import DOMAIN, LED_OFF_COLOR, MANUFACTURER
@@ -62,7 +62,7 @@ def validate_rgb_color(value: Any) -> tuple[int, int, int]:
     if any(color < 0 or color > 255 for color in rgb):
         raise vol.Invalid("RGB values must be between 0 and 255")
 
-    return rgb
+    return rgb[0], rgb[1], rgb[2]
 
 
 SET_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
@@ -301,6 +301,7 @@ async def async_setup_gateway(
     coord: WiserCoordinator,
 ) -> None:
     """Set up the gateway device."""
+    assert coord.config_entry is not None
     if coord.gateway is None:
         _LOGGER.warning(
             "The gateway device is not recognized in the coordinator, which can happen if option "
@@ -314,6 +315,7 @@ async def async_setup_gateway(
         sw_version = None
         hw_version = None
     else:
+        assert coord.gateway_info is not None
         gateway_identifier = coord.gateway.combined_serial_number
         generation = parse_wiser_device_ref_c(coord.gateway.c["comm_ref"])["generation"]
         name = f"{coord.config_entry.title} µGateway"
@@ -324,6 +326,9 @@ async def async_setup_gateway(
     area = None
     for output in coord.gateway.outputs if coord.gateway is not None else []:
         if "load" not in output:
+            continue
+
+        if coord.loads is None or coord.rooms is None:
             continue
 
         load = coord.loads.get(output["load"])

@@ -25,6 +25,8 @@ async def async_setup_entry(
     """Set up Wiser scenes."""
 
     coordinator: WiserCoordinator = entry.runtime_data
+    assert coordinator.scenes is not None
+    assert coordinator.jobs is not None
     entities = []
 
     for scene in coordinator.scenes.values():
@@ -56,6 +58,7 @@ class WiserSceneEntity(HaScene):
                 "Please fix the root cause and disable the option."
             )
 
+        assert coordinator.config_entry is not None
         gateway = (
             self.coordinator.gateway.combined_serial_number
             if self.coordinator.gateway is not None
@@ -68,5 +71,6 @@ class WiserSceneEntity(HaScene):
 
     async def async_activate(self, **kwargs: Any) -> None:
         """Trigger the Wiser scene."""
+        assert self.coordinator.jobs is not None
         job = self.coordinator.jobs[self._scene.job]
         await job.async_trigger_all()

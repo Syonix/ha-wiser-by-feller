@@ -265,9 +265,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_reauth(self, entry_data: dict[str, Any]):
         """Handle configuration by re-auth."""
         self._reauth_entry_data = entry_data
-        self._reauth_entry = self.hass.config_entries.async_get_entry(
+        reauth_entry = self.hass.config_entries.async_get_entry(
             self.context["entry_id"]
         )
+        assert reauth_entry is not None
+        self._reauth_entry = reauth_entry
         return await self.async_step_reauth_confirm()
 
     async def async_step_reauth_confirm(self, user_input: dict[str, Any] | None = None):

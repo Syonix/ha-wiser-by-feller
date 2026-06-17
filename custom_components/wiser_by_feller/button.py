@@ -31,7 +31,11 @@ async def async_setup_entry(
     """Set up Wiser button entities."""
     coordinator: WiserCoordinator = entry.runtime_data
 
-    entities = []
+    assert coordinator.loads is not None
+    assert coordinator.states is not None
+    assert coordinator.devices is not None
+    assert coordinator.rooms is not None
+    entities: list[WiserEntity] = []
     for load in coordinator.loads.values():
         load.raw_state = coordinator.states[load.id]
         device = coordinator.devices[load.device]
@@ -57,7 +61,7 @@ async def async_setup_entry(
         if group.thermostat_ref is None:
             continue
 
-        thermostat = coordinator.devices[group.thermostat_ref.unprefixed_address]
+        thermostat = coordinator.devices.get(group.thermostat_ref.unprefixed_address)
 
         if thermostat is None:
             continue
@@ -75,6 +79,8 @@ class WiserPingEntity(WiserEntity, ButtonEntity):
     These allow a load or device to be pinged, resulting in a flashing button
     illumination on the targeted device. This helps to identify devices.
     """
+
+    _device: Device
 
     def __init__(
         self,
@@ -114,6 +120,8 @@ class WiserClimatePingEntity(WiserHvacGroupDeviceEntity, WiserEntity, ButtonEnti
     resulting in a flashing button illumination on the targeted device.
     """
 
+    _hvac_group: HvacGroup
+
     def __init__(
         self,
         coordinator: WiserCoordinator,
@@ -142,6 +150,7 @@ class WiserClimatePingEntity(WiserHvacGroupDeviceEntity, WiserEntity, ButtonEnti
 
     async def async_press(self, **kwargs: Any) -> None:
         """Ping the load or device to illuminate the button."""
+        assert self.coordinator.loads is not None
         for load_id in self._hvac_group.loads:
             await self.coordinator.loads[load_id].async_ping(
                 10000, BlinkPattern.RAMP, HA_BLUE
@@ -155,6 +164,8 @@ class WiserImpulseEntity(WiserEntity, ButtonEntity):
 
     These are OnOff loads that have been configured for impulse switching.
     """
+
+    _load: Load
 
     def __init__(
         self,

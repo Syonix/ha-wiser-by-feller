@@ -33,6 +33,8 @@ def resolve_room(coordinator: WiserCoordinator, group: HvacGroup) -> dict | None
     Unfortunately, the API does not return the sensor's room currently,
     so we can't use that instead.
     """
+    if coordinator.loads is None or coordinator.rooms is None:
+        return None
     rooms = list({coordinator.loads[loadid].room for loadid in group.loads})
     rid = rooms[0] if len(rooms) == 1 else None
 
@@ -47,14 +49,18 @@ async def async_setup_entry(
     """Set up Wiser climate entities."""
     coordinator: WiserCoordinator = entry.runtime_data
 
-    entities = []
+    assert coordinator.devices is not None
+    assert coordinator.states is not None
+    entities: list[ClimateEntity] = []
     for hvac_group in (
         coordinator.hvac_groups.values() if coordinator.hvac_groups is not None else []
     ):
         if hvac_group.thermostat_ref is None:
             continue
 
-        thermostat = coordinator.devices[hvac_group.thermostat_ref.unprefixed_address]
+        thermostat = coordinator.devices.get(
+            hvac_group.thermostat_ref.unprefixed_address
+        )
 
         if thermostat is None:
             continue
@@ -70,6 +76,11 @@ async def async_setup_entry(
 class WiserHvacGroupDeviceEntity:
     """Abstract base class for HVAC group entities."""
 
+    coordinator: WiserCoordinator
+    _hvac_group: HvacGroup | None
+    _room: dict | None
+    _attr_device_unique_id: str
+
     @property
     def device_info(self) -> DeviceInfo | None:
         """Return the device info."""
@@ -78,13 +89,13 @@ class WiserHvacGroupDeviceEntity:
             return None
 
         area = None if self._room is None else self._room["name"]
-        via = (
-            (DOMAIN, self.coordinator.gateway.combined_serial_number)
+        via: tuple[str, str] | None = (
+            (DOMAIN, str(self.coordinator.gateway.combined_serial_number))
             if self.coordinator.gateway is not None
             else None
         )
 
-        return DeviceInfo(
+        info = DeviceInfo(
             identifiers={
                 (
                     DOMAIN,
@@ -95,8 +106,10 @@ class WiserHvacGroupDeviceEntity:
             manufacturer=MANUFACTURER,
             model="HVAC Group",
             suggested_area=area,
-            via_device=via,
         )
+        if via is not None:
+            info["via_device"] = via
+        return info
 
 
 class WiserHvacGroupEntity(WiserHvacGroupDeviceEntity, WiserEntity, ClimateEntity):
@@ -105,6 +118,8 @@ class WiserHvacGroupEntity(WiserHvacGroupDeviceEntity, WiserEntity, ClimateEntit
     These represent a combination of a temperature sensor and one or multiple
     heating valve controllers.
     """
+
+    _hvac_group: HvacGroup
 
     def __init__(
         self,
@@ -133,7 +148,8 @@ class WiserHvacGroupEntity(WiserHvacGroupDeviceEntity, WiserEntity, ClimateEntit
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated entity data from the coordinator."""
-        self._hvac_group.raw_state = self.coordinator.states[self._hvac_group.id]
+        if self.coordinator.states is not None:
+            self._hvac_group.raw_state = self.coordinator.states[self._hvac_group.id]
         self.async_write_ha_state()
 
     @property

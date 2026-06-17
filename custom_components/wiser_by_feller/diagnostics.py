@@ -20,6 +20,9 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator: WiserCoordinator = entry.runtime_data
+    assert coordinator.loads is not None
+    assert coordinator.devices is not None
+    assert coordinator.scenes is not None
     loads_json = [load.raw_data for load in coordinator.loads.values()]
     devices_json = [
         coordinator.devices[device_id].raw_data for device_id in coordinator.devices
@@ -50,8 +53,12 @@ async def async_get_device_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a device."""
     coordinator: WiserCoordinator = entry.runtime_data
+    assert coordinator.scenes is not None
+    assert coordinator.devices is not None
     result: dict[str, Any] = {}
-    result["device"] = async_redact_data(json.loads(device.json_repr), TO_REDACT)
+    result["device"] = async_redact_data(
+        json.loads(device.json_repr or b"{}"), TO_REDACT
+    )
 
     if device.name == f"{entry.title} µGateway":
         result["gateway_info"] = async_redact_data(coordinator.gateway_info, TO_REDACT)

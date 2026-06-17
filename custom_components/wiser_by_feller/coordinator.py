@@ -44,12 +44,12 @@ def get_unique_id(device: Device, load: Load | None) -> str:
     return device.id if load is None else f"{load.device}_{load.channel}"
 
 
-class WiserCoordinator(DataUpdateCoordinator):
+class WiserCoordinator(DataUpdateCoordinator[None]):
     """Class for coordinating all Wiser devices / entities."""
 
     def __init__(
         self,
-        hass,
+        hass: Any,
         api: WiserByFellerAPI,
         host: str,
         token: str,
@@ -65,21 +65,21 @@ class WiserCoordinator(DataUpdateCoordinator):
         self._hass = hass
         self._api = api
         self._options = options
-        self._loads = None
-        self._states = None
-        self._devices = None
-        self._device_ids_by_serial = None
-        self._scenes = None
-        self._sensors = None
-        self._system_flags = None
-        self._system_health = None
-        self._hvac_groups = None
-        self._assigned_thermostats = {}
-        self._jobs = None
-        self._rooms = None
-        self._gateway = None
-        self._gateway_info = None
-        self._managed_buttons = None
+        self._loads: dict[int, Any] | None = None
+        self._states: dict[int, Any] | None = None
+        self._devices: dict[str, Any] | None = None
+        self._device_ids_by_serial: dict[str, str] | None = None
+        self._scenes: dict[int, Any] | None = None
+        self._sensors: dict[int, Any] | None = None
+        self._system_flags: list[Any] | None = None
+        self._system_health: dict[str, Any] | None = None
+        self._hvac_groups: dict[int, Any] | None = None
+        self._assigned_thermostats: dict[str, int] = {}
+        self._jobs: dict[int, Any] | None = None
+        self._rooms: dict[int, Any] | None = None
+        self._gateway: Any = None
+        self._gateway_info: dict[str, Any] | None = None
+        self._managed_buttons: dict[int, Any] | None = None
         self._findme_button_future: asyncio.Future | None = None
         self._ws = Websocket(host, token, _LOGGER)
         self._ws_was_idle = False
@@ -197,6 +197,16 @@ class WiserCoordinator(DataUpdateCoordinator):
         device_id = call.data["device"]
         registry = dr.async_get(self.hass)
         device = registry.async_get(device_id)
+        if (
+            device is None
+            or self._device_ids_by_serial is None
+            or self._devices is None
+        ):
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="device_not_found",
+                translation_placeholders={"device_id": device_id},
+            )
         sn = device.serial_number
 
         if sn not in self._device_ids_by_serial:

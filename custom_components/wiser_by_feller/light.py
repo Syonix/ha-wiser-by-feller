@@ -34,7 +34,11 @@ async def async_setup_entry(
     """Set up Wiser light entities."""
     coordinator: WiserCoordinator = entry.runtime_data
 
-    entities = []
+    assert coordinator.loads is not None
+    assert coordinator.states is not None
+    assert coordinator.devices is not None
+    assert coordinator.rooms is not None
+    entities: list[WiserEntity] = []
     for load in coordinator.loads.values():
         load.raw_state = coordinator.states[load.id]
         device = coordinator.devices[load.device]
@@ -58,14 +62,20 @@ async def async_setup_entry(
 class WiserOnOffEntity(WiserEntity, LightEntity):
     """Entity class for simple non-dimmable lights."""
 
+    _load: Load
+
     def __init__(
-        self, coordinator: WiserCoordinator, load: Load, device: Device, room: dict
+        self,
+        coordinator: WiserCoordinator,
+        load: Load,
+        device: Device,
+        room: dict | None,
     ) -> None:
         """Set up Wiser on/off light entity."""
         super().__init__(coordinator, load, device, room)
         self._brightness = None
         self._attr_color_mode = ColorMode.ONOFF
-        self._attr_supported_color_modes = [ColorMode.ONOFF]
+        self._attr_supported_color_modes = {ColorMode.ONOFF}
 
     @property
     def is_on(self) -> bool | None:
@@ -90,13 +100,19 @@ class WiserOnOffEntity(WiserEntity, LightEntity):
 class WiserDimEntity(WiserEntity, LightEntity):
     """Entity class for simple dimmable lights."""
 
+    _load: Load
+
     def __init__(
-        self, coordinator: WiserCoordinator, load: Load, device: Device, room: dict
+        self,
+        coordinator: WiserCoordinator,
+        load: Load,
+        device: Device,
+        room: dict | None,
     ) -> None:
         """Set up Wiser dimmable light entity."""
         super().__init__(coordinator, load, device, room)
         self._attr_color_mode = ColorMode.BRIGHTNESS
-        self._attr_supported_color_modes = [ColorMode.BRIGHTNESS]
+        self._attr_supported_color_modes = {ColorMode.BRIGHTNESS}
 
     @property
     def is_on(self) -> bool | None:
@@ -133,6 +149,7 @@ class WiserDimEntity(WiserEntity, LightEntity):
 class WiserDimTwEntity(WiserEntity, LightEntity):
     """Entity class for DALI tunable white dimmable lights."""
 
+    _load: Load
     _attr_color_mode = ColorMode.COLOR_TEMP
     _attr_supported_color_modes = {ColorMode.COLOR_TEMP}
     _attr_min_color_temp_kelvin = 1000
@@ -187,6 +204,7 @@ class WiserDimTwEntity(WiserEntity, LightEntity):
 class WiserDimRgbwEntity(WiserEntity, LightEntity):
     """Entity class for DALI RGBW dimmable lights."""
 
+    _load: Load
     _attr_color_mode = ColorMode.RGBW
     _attr_supported_color_modes = {ColorMode.RGBW}
 

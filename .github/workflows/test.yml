@@ -44,6 +44,10 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
           if [ -f requirements.test.txt ]; then pip install -r requirements.test.txt; fi
+      - name: Install mypy
+        run: pip install mypy
+      - name: Run mypy
+        run: mypy custom_components/wiser_by_feller/
       - name: Run tests
         run: pytest tests/ --junitxml=junit.xml --cov=custom_components/wiser_by_feller --cov-report=term-missing:skip-covered --cov-report=xml --cov-report=html
       - name: Archive code coverage results
