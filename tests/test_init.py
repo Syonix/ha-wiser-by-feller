@@ -1,9 +1,12 @@
 """Tests for integration setup/teardown (__init__.py)."""
 
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
+from aiowiserbyfeller import UnsuccessfulRequest
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
+import pytest
 
 from custom_components.wiser_by_feller import async_setup_gateway
 from custom_components.wiser_by_feller.const import DOMAIN
@@ -102,3 +105,153 @@ async def test_unload_entry_removes_service(hass, setup_integration):
     await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert not hass.services.has_service(DOMAIN, "status_light")
+
+
+# ── find_button service ───────────────────────────────────────────────────────
+
+_MANAGED_FIELDS = {
+    "room_name": "Living Room",
+    "device_name": "Dimmer Plus",
+    "scene_name": None,
+}
+_EMPTY_FIELDS = {"room_name": None, "device_name": None, "scene_name": None}
+
+
+async def test_find_button_service_is_registered(hass, setup_integration):
+    """find_button service is registered after setup."""
+    assert hass.services.has_service(DOMAIN, "find_button")
+
+
+async def test_find_button_managed_button_returns_fields(
+    hass, setup_integration, mock_coordinator
+):
+    """Managed button: response contains button_id, device, channel, and resolved fields."""
+    mock_coordinator.async_find_button = AsyncMock(
+        return_value={"button_id": 123, "device": "00019edc", "channel": 0}
+    )
+    mock_coordinator.resolve_managed_button_fields.return_value = _MANAGED_FIELDS
+    response = await hass.services.async_call(
+        DOMAIN, "find_button", {}, blocking=True, return_response=True
+    )
+
+    assert response["button_id"] == 123
+    assert response["device"] == "00019edc"
+    assert response["channel"] == 0
+    assert response["room_name"] == "Living Room"
+    assert response["device_name"] == "Dimmer Plus"
+    assert response["scene_name"] is None
+    assert response["note"] is None
+
+
+async def test_find_button_managed_button_no_note(
+    hass, setup_integration, mock_coordinator
+):
+    """Managed button: note is None regardless of translations."""
+    mock_coordinator.async_find_button = AsyncMock(
+        return_value={"button_id": 5, "device": "aabbccdd", "channel": 0}
+    )
+    mock_coordinator.resolve_managed_button_fields.return_value = _EMPTY_FIELDS
+    response = await hass.services.async_call(
+        DOMAIN, "find_button", {}, blocking=True, return_response=True
+    )
+
+    assert response["note"] is None
+
+
+async def test_find_button_unmanaged_button_sets_note(
+    hass, setup_integration, mock_coordinator
+):
+    """Unmanaged button: response contains device/channel and a translated note."""
+    mock_coordinator.async_find_button = AsyncMock(
+        return_value={"button_id": None, "device": "00019edc", "channel": 0}
+    )
+    with patch(
+        "custom_components.wiser_by_feller.async_get_translations",
+        return_value={
+            f"component.{DOMAIN}.services.find_button.note_unmanaged_button": "Unmanaged note."
+        },
+    ):
+        response = await hass.services.async_call(
+            DOMAIN, "find_button", {}, blocking=True, return_response=True
+        )
+
+    assert response["button_id"] is None
+    assert response["device"] == "00019edc"
+    assert response["channel"] == 0
+    assert response["note"] == "Unmanaged note."
+    assert response["room_name"] is None
+    assert response["device_name"] is None
+    assert response["scene_name"] is None
+
+
+async def test_find_button_unmanaged_falls_back_when_translation_missing(
+    hass, setup_integration, mock_coordinator
+):
+    """Unmanaged button: falls back to the hardcoded English note when translation key absent."""
+    mock_coordinator.async_find_button = AsyncMock(
+        return_value={"button_id": None, "device": "00019edc", "channel": 0}
+    )
+    with patch(
+        "custom_components.wiser_by_feller.async_get_translations",
+        return_value={},
+    ):
+        response = await hass.services.async_call(
+            DOMAIN, "find_button", {}, blocking=True, return_response=True
+        )
+
+    assert "unmanaged" in response["note"].lower()
+
+
+async def test_find_button_creates_notification(
+    hass, setup_integration, mock_coordinator
+):
+    """find_button creates a persistent notification after identifying a button."""
+    mock_coordinator.async_find_button = AsyncMock(
+        return_value={"button_id": 7, "device": "aabbccdd", "channel": 1}
+    )
+    mock_coordinator.resolve_managed_button_fields.return_value = _MANAGED_FIELDS
+    with patch(
+        "custom_components.wiser_by_feller.async_create_notification"
+    ) as mock_notify:
+        await hass.services.async_call(
+            DOMAIN, "find_button", {}, blocking=True, return_response=True
+        )
+
+    mock_notify.assert_called_once()
+    _, kwargs = mock_notify.call_args
+    assert kwargs.get("notification_id") == "wiser_find_button"
+
+
+# ── set_button_led_override / clear_button_led_override error handling ────────
+
+
+async def test_set_button_led_override_raises_service_error_on_api_failure(
+    hass, setup_integration, mock_coordinator
+):
+    """set_button_led_override raises ServiceValidationError when the API returns an error."""
+    mock_coordinator.api.async_set_button_led = AsyncMock(
+        side_effect=UnsuccessfulRequest("SmartButton 43 not found")
+    )
+    with pytest.raises(ServiceValidationError, match="SmartButton 43 not found"):
+        await hass.services.async_call(
+            DOMAIN,
+            "set_button_led_override",
+            {"button_id": 43, "led_index": "0", "rgb_color": [255, 0, 0]},
+            blocking=True,
+        )
+
+
+async def test_clear_button_led_override_raises_service_error_on_api_failure(
+    hass, setup_integration, mock_coordinator
+):
+    """clear_button_led_override raises ServiceValidationError when the API returns an error."""
+    mock_coordinator.api.async_set_button_led = AsyncMock(
+        side_effect=UnsuccessfulRequest("SmartButton 43 not found")
+    )
+    with pytest.raises(ServiceValidationError, match="SmartButton 43 not found"):
+        await hass.services.async_call(
+            DOMAIN,
+            "clear_button_led_override",
+            {"button_id": 43, "led_index": "0"},
+            blocking=True,
+        )

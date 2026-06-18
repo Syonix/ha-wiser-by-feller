@@ -5,19 +5,24 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiowiserbyfeller import Auth, WiserByFellerAPI
+from aiowiserbyfeller import Auth, UnsuccessfulRequest, WiserByFellerAPI
 from aiowiserbyfeller.enum import BlinkPattern
 from aiowiserbyfeller.util import parse_wiser_device_ref_c
 from homeassistant.components.light import ATTR_RGB_COLOR
+from homeassistant.components.persistent_notification import (
+    async_create as async_create_notification,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
+from homeassistant.helpers.translation import async_get_translations
 import voluptuous as vol
 
-from .const import DOMAIN, MANUFACTURER
+from .const import DOMAIN, LED_OFF_COLOR, MANUFACTURER
 from .coordinator import WiserCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -32,8 +37,10 @@ PLATFORMS: list[Platform] = [
     Platform.SWITCH,
 ]
 
+SERVICE_STATUS_LIGHT = "status_light"
 SERVICE_SET_BUTTON_LED_OVERRIDE = "set_button_led_override"
 SERVICE_CLEAR_BUTTON_LED_OVERRIDE = "clear_button_led_override"
+SERVICE_FIND_BUTTON = "find_button"
 
 ATTR_BUTTON_ID = "button_id"
 ATTR_LED_INDEX = "led_index"
@@ -60,7 +67,7 @@ def validate_rgb_color(value: Any) -> tuple[int, int, int]:
 SET_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_BUTTON_ID): cv.positive_int,
-        vol.Required(ATTR_LED_INDEX, default=0): cv.positive_int,
+        vol.Required(ATTR_LED_INDEX, default="0"): vol.In(["0", "1"]),
         vol.Required(ATTR_RGB_COLOR, default=(0, 255, 0)): validate_rgb_color,
         vol.Required(ATTR_EFFECT, default=BlinkPattern.PERMANENT.value): vol.In(
             [pattern.value for pattern in BlinkPattern]
@@ -71,7 +78,7 @@ SET_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
 CLEAR_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
     {
         vol.Required(ATTR_BUTTON_ID): cv.positive_int,
-        vol.Required(ATTR_LED_INDEX, default=0): cv.positive_int,
+        vol.Required(ATTR_LED_INDEX, default="0"): vol.In(["0", "1"]),
     }
 )
 
@@ -94,28 +101,98 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     hass.services.async_register(
-        DOMAIN, "status_light", wiser_coordinator.async_set_status_light
+        DOMAIN, SERVICE_STATUS_LIGHT, wiser_coordinator.async_set_status_light
     )
 
     async def async_set_button_led_override(call: ServiceCall) -> None:
         """Set button LED override."""
-        await wiser_coordinator.api.async_set_button_led(
-            button_id=call.data[ATTR_BUTTON_ID],
-            led_index=call.data[ATTR_LED_INDEX],
-            on=True,
-            pattern=BlinkPattern(call.data[ATTR_EFFECT]),
-            color=rgb_tuple_to_hex(call.data[ATTR_RGB_COLOR]),
-        )
+        try:
+            await wiser_coordinator.api.async_set_button_led(
+                button_id=call.data[ATTR_BUTTON_ID],
+                led_index=int(call.data[ATTR_LED_INDEX]),
+                on=True,
+                pattern=BlinkPattern(call.data[ATTR_EFFECT]),
+                color=rgb_tuple_to_hex(call.data[ATTR_RGB_COLOR]),
+            )
+        except UnsuccessfulRequest as err:
+            raise ServiceValidationError(str(err)) from err
 
     async def async_clear_button_led_override(call: ServiceCall) -> None:
         """Clear button LED override."""
-        await wiser_coordinator.api.async_set_button_led(
-            button_id=call.data[ATTR_BUTTON_ID],
-            led_index=call.data[ATTR_LED_INDEX],
-            on=False,
-            pattern=BlinkPattern.PERMANENT,
-            color="#000000",
+        try:
+            await wiser_coordinator.api.async_set_button_led(
+                button_id=call.data[ATTR_BUTTON_ID],
+                led_index=int(call.data[ATTR_LED_INDEX]),
+                on=False,
+                pattern=BlinkPattern.PERMANENT,
+                color=LED_OFF_COLOR,
+            )
+        except UnsuccessfulRequest as err:
+            raise ServiceValidationError(str(err)) from err
+
+    async def async_find_button_service(call: ServiceCall) -> dict[str, Any]:
+        """Find a physical button by activating find-me mode."""
+        result = await wiser_coordinator.async_find_button()
+
+        button_id = result.get("button_id")
+        device = result.get("device")
+        channel = result.get("channel")
+
+        note = None
+        fields: dict = {"room_name": None, "device_name": None, "scene_name": None}
+
+        if button_id is not None:
+            fields = wiser_coordinator.resolve_managed_button_fields(button_id)
+        elif device is not None:
+            translations = await async_get_translations(
+                hass, hass.config.language, "services", [DOMAIN]
+            )
+            note = translations.get(
+                f"component.{DOMAIN}.services.find_button.note_unmanaged_button",
+                "This button is unmanaged. See docs for more information.",
+            )
+
+        parts = [
+            p
+            for p in [fields["room_name"], fields["device_name"], fields["scene_name"]]
+            if p is not None
+        ]
+        title = (
+            " — ".join(parts)
+            if parts
+            else (
+                f"Device {device}" + (f" Ch.{channel}" if channel is not None else "")
+                if device is not None
+                else "Unknown button"
+            )
         )
+
+        lines = [f"**{title}**"]
+        if button_id is not None:
+            lines.append(f"Button ID: `{button_id}`")
+        if device is not None:
+            lines.append(f"Device: `{device}`")
+        if channel is not None:
+            lines.append(f"Channel: `{channel}`")
+        if note is not None:
+            lines.append(f"_{note}_")
+
+        async_create_notification(
+            hass,
+            "\n\n".join(lines),
+            title="Wiser Button Identified",
+            notification_id="wiser_find_button",
+        )
+
+        return {
+            "button_id": button_id,
+            "device": device,
+            "channel": channel,
+            "room_name": fields["room_name"],
+            "device_name": fields["device_name"],
+            "scene_name": fields["scene_name"],
+            "note": note,
+        }
 
     hass.services.async_register(
         DOMAIN,
@@ -131,6 +208,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         schema=CLEAR_BUTTON_LED_OVERRIDE_SCHEMA,
     )
 
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_FIND_BUTTON,
+        async_find_button_service,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+
     return True
 
 
@@ -140,9 +224,10 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await coordinator.ws_close()
 
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.services.async_remove(DOMAIN, "status_light")
+        hass.services.async_remove(DOMAIN, SERVICE_STATUS_LIGHT)
         hass.services.async_remove(DOMAIN, SERVICE_SET_BUTTON_LED_OVERRIDE)
         hass.services.async_remove(DOMAIN, SERVICE_CLEAR_BUTTON_LED_OVERRIDE)
+        hass.services.async_remove(DOMAIN, SERVICE_FIND_BUTTON)
 
     return unload_ok
 

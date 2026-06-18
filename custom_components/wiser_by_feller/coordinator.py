@@ -10,6 +10,7 @@ from typing import Any
 
 from aiowiserbyfeller import (
     AuthorizationFailed,
+    Button,
     Device,
     HvacGroup,
     Job,
@@ -23,20 +24,21 @@ from aiowiserbyfeller import (
     WiserByFellerAPI,
 )
 from aiowiserbyfeller.const import LOAD_SUBTYPE_ONOFF_DTO, LOAD_TYPE_ONOFF
+from aiowiserbyfeller.enum import BlinkPattern
 import aiowiserbyfeller.errors
 from aiowiserbyfeller.util import parse_wiser_device_ref_c
 from homeassistant.core import ServiceCall
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, ServiceValidationError
 from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
+from .const import DOMAIN, HA_BLUE, LED_OFF_COLOR, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
 from .exceptions import (
     InvalidEntityChannelSpecified,
     InvalidEntitySpecified,
     UnexpectedGatewayResult,
 )
-from .util import rgb_tuple_to_hex
+from .util import resolve_device_name, rgb_tuple_to_hex
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -81,6 +83,8 @@ class WiserCoordinator(DataUpdateCoordinator):
         self._rooms = None
         self._gateway = None
         self._gateway_info = None
+        self._managed_buttons = None
+        self._findme_button_future: asyncio.Future | None = None
         self._ws = Websocket(host, token, _LOGGER)
 
     @property
@@ -150,6 +154,11 @@ class WiserCoordinator(DataUpdateCoordinator):
     def system_flags(self) -> list[SystemFlag] | None:
         """A list of system flags of the connected µGateway."""
         return self._system_flags
+
+    @property
+    def managed_buttons(self) -> dict[int, Button] | None:
+        """A dict of managed (registered) buttons, keyed by button ID."""
+        return self._managed_buttons
 
     @property
     def api_host(self) -> str:
@@ -226,6 +235,108 @@ class WiserCoordinator(DataUpdateCoordinator):
         """Device will light up the yellow LEDs of all buttons for a short time."""
         return await self._api.async_ping_device(device_id)
 
+    async def async_update_managed_buttons(self) -> None:
+        """Update managed buttons from µGateway."""
+        _LOGGER.debug("Attempting to update managed buttons from µGateway...")
+        buttons = await self._api.async_get_managed_buttons()
+        self._managed_buttons = {btn.id: btn for btn in buttons if btn.id is not None}
+
+    async def async_find_button(self) -> dict:
+        """Activate find-me mode and wait for a physical button press."""
+        if (
+            self._findme_button_future is not None
+            and not self._findme_button_future.done()
+        ):
+            raise ServiceValidationError("Find button operation already in progress")
+
+        loop = asyncio.get_running_loop()
+        future = loop.create_future()
+        self._findme_button_future = future
+
+        try:
+            await self._api.async_find_buttons(
+                on=True,
+                time=2,
+                blink_pattern=BlinkPattern.RAMP,
+                color=HA_BLUE,
+            )
+            result = await asyncio.wait_for(future, timeout=120)
+        except asyncio.TimeoutError as err:
+            raise ServiceValidationError(
+                "No button was pressed within 2 minutes. Find-me mode cancelled."
+            ) from err
+        finally:
+            self._findme_button_future = None
+            await self._api.async_find_buttons(
+                on=False, time=0, blink_pattern=BlinkPattern.RAMP, color=LED_OFF_COLOR
+            )
+
+        if isinstance(result, int):
+            button = (
+                self._managed_buttons.get(result) if self._managed_buttons else None
+            )
+            return {
+                "button_id": result,
+                "device": button.device if button else None,
+                "channel": button.channel if button else None,
+            }
+
+        if isinstance(result, dict):
+            return {
+                "button_id": None,
+                "device": result.get("device"),
+                "channel": result.get("channel"),
+            }
+
+        return {"button_id": None, "device": None, "channel": None}
+
+    def resolve_managed_button_fields(self, button_id: int) -> dict:
+        """Return structured display fields for a managed button."""
+        empty: dict = {"room_name": None, "device_name": None, "scene_name": None}
+
+        if self._managed_buttons is None or self._devices is None:
+            return empty
+
+        button = self._managed_buttons.get(button_id)
+        if button is None:
+            return empty
+
+        device = self._devices.get(button.device)
+        if device is None:
+            return empty
+
+        room_name = None
+        for output in device.outputs:
+            load_id = output.get("load")
+            if load_id is None or self._loads is None:
+                continue
+            load = self._loads.get(load_id)
+            if load is None:
+                continue
+            if (
+                load.room is not None
+                and self._rooms is not None
+                and load.room in self._rooms
+            ):
+                room_name = self._rooms[load.room]["name"]
+                break
+
+        device_name = resolve_device_name(device, None, None)
+
+        scene_name = None
+        job_id = button.raw_data.get("job")
+        if job_id is not None and self._scenes is not None:
+            for scene in self._scenes.values():
+                if scene.job == job_id:
+                    scene_name = scene.name
+                    break
+
+        return {
+            "room_name": room_name,
+            "device_name": device_name,
+            "scene_name": scene_name,
+        }
+
     async def _async_update_data(self) -> None:
         """Fetch data from API endpoint.
 
@@ -274,6 +385,17 @@ class WiserCoordinator(DataUpdateCoordinator):
                 async with asyncio.timeout(10):
                     await self.async_update_hvac_groups()
 
+            if self._managed_buttons is None:
+                try:
+                    async with asyncio.timeout(10):
+                        await self.async_update_managed_buttons()
+                except Exception as err:  # noqa: BLE001
+                    _LOGGER.warning(
+                        "Failed to load managed buttons, find_button service will not resolve labels: %s",
+                        err,
+                    )
+                    self._managed_buttons = {}
+
             async with asyncio.timeout(10):
                 await self.async_update_states()
 
@@ -314,6 +436,15 @@ class WiserCoordinator(DataUpdateCoordinator):
         """Process websocket data update."""
         if self._states is None:
             return  # State is not ready yet.
+
+        if "findme" in data:
+            if "button" in data["findme"]:
+                _LOGGER.debug(
+                    "Websocket findme button event received: %s", data["findme"]
+                )
+                if self._findme_button_future and not self._findme_button_future.done():
+                    self._findme_button_future.set_result(data["findme"]["button"])
+            return  # findme events don't update entity state
 
         if "load" in data:
             _LOGGER.debug("Websocket load data update received: %s", data["load"])
