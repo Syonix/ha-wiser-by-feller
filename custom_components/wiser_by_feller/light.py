@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 from aiowiserbyfeller import DaliRgbw, DaliTw, Device, Dim, Load, OnOff
-from aiowiserbyfeller.const import KIND_LIGHT, KIND_SWITCH
+from aiowiserbyfeller.const import KIND_LIGHT
 from homeassistant.components.light import (
     ATTR_BRIGHTNESS,
     ATTR_COLOR_TEMP_KELVIN,
@@ -14,7 +14,6 @@ from homeassistant.components.light import (
     LightEntity,
 )
 from homeassistant.components.light.const import ColorMode
-from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -42,9 +41,7 @@ async def async_setup_entry(
 
         if await coordinator.async_is_onoff_impulse_load(load):
             continue  # See button.py
-        if isinstance(load, OnOff) and load.kind == KIND_SWITCH:
-            entities.append(WiserOnOffSwitchEntity(coordinator, load, device, room))
-        elif isinstance(load, OnOff) and (load.kind == KIND_LIGHT or load.kind is None):
+        if isinstance(load, OnOff) and (load.kind == KIND_LIGHT or load.kind is None):
             entities.append(WiserOnOffEntity(coordinator, load, device, room))
         elif isinstance(load, DaliTw):
             entities.append(WiserDimTwEntity(coordinator, load, device, room))
@@ -68,36 +65,6 @@ class WiserOnOffEntity(WiserEntity, LightEntity):
         self._brightness = None
         self._attr_color_mode = ColorMode.ONOFF
         self._attr_supported_color_modes = [ColorMode.ONOFF]
-
-    @property
-    def is_on(self) -> bool | None:
-        """Return device state."""
-        return self._load.state
-
-    async def async_turn_on(self, **kwargs: Any) -> None:
-        """Turn on device load."""
-        await self._load.async_switch_on()
-
-        # Prevent state showing as on - off - on due to slightly delayed websocket update
-        self._load.raw_state["bri"] = 100
-
-    async def async_turn_off(self, **kwargs: Any) -> None:
-        """Turn off device load."""
-        await self._load.async_switch_off()
-
-        # Prevent state showing as off - on - off due to slightly delayed websocket update
-        self._load.raw_state["bri"] = 0
-
-
-class WiserOnOffSwitchEntity(WiserEntity, SwitchEntity):
-    """Entity class for simple non-dimmable switches."""
-
-    def __init__(
-        self, coordinator: WiserCoordinator, load: Load, device: Device, room: dict
-    ) -> None:
-        """Set up Wiser on/off switch entity."""
-        super().__init__(coordinator, load, device, room)
-        self._brightness = None
 
     @property
     def is_on(self) -> bool | None:

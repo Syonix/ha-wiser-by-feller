@@ -1,4 +1,4 @@
-"""Tests for light and switch platform entities from light.py."""
+"""Tests for light platform entities (light.py) and OnOff switch entity (switch.py)."""
 
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,8 +16,8 @@ from custom_components.wiser_by_feller.light import (
     WiserDimRgbwEntity,
     WiserDimTwEntity,
     WiserOnOffEntity,
-    WiserOnOffSwitchEntity,
 )
+from custom_components.wiser_by_feller.switch import WiserOnOffSwitchEntity
 from custom_components.wiser_by_feller.util import (
     brightness_to_wiser,
     wiser_to_brightness,

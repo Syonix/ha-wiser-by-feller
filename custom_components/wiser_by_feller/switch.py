@@ -5,7 +5,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from aiowiserbyfeller import SystemFlag
+from aiowiserbyfeller import Device, Load, OnOff, SystemFlag
+from aiowiserbyfeller.const import KIND_SWITCH
 from homeassistant.components.switch import SwitchEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
@@ -15,6 +16,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import WiserCoordinator
+from .entity import WiserEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,12 +29,52 @@ async def async_setup_entry(
     """Set up Wiser switch entities."""
 
     coordinator: WiserCoordinator = entry.runtime_data
-    entities = [
+
+    entities: list = [
         WiserSystemFlag(coordinator, flag) for flag in coordinator.system_flags or []
     ]
 
+    for load in coordinator.loads.values():
+        load.raw_state = coordinator.states[load.id]
+        device = coordinator.devices[load.device]
+        room = coordinator.rooms[load.room] if load.room is not None else None
+
+        if await coordinator.async_is_onoff_impulse_load(load):
+            continue  # See button.py
+        if isinstance(load, OnOff) and load.kind == KIND_SWITCH:
+            entities.append(WiserOnOffSwitchEntity(coordinator, load, device, room))
+
     if entities:
         async_add_entities(entities)
+
+
+class WiserOnOffSwitchEntity(WiserEntity, SwitchEntity):
+    """Entity class for simple on/off switches configured as such in the Wiser ecosystem (outlets, fans, etc.)."""
+
+    def __init__(
+        self, coordinator: WiserCoordinator, load: Load, device: Device, room: dict
+    ) -> None:
+        """Set up Wiser on/off switch entity."""
+        super().__init__(coordinator, load, device, room)
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return device state."""
+        return self._load.state
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        """Turn on device load."""
+        await self._load.async_switch_on()
+
+        # Prevent state showing as on - off - on due to slightly delayed websocket update
+        self._load.raw_state["bri"] = 100
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        """Turn off device load."""
+        await self._load.async_switch_off()
+
+        # Prevent state showing as off - on - off due to slightly delayed websocket update
+        self._load.raw_state["bri"] = 0
 
 
 class WiserSystemFlag(CoordinatorEntity, SwitchEntity):
