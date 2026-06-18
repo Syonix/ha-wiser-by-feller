@@ -325,3 +325,142 @@ def test_ws_update_data_noop_when_states_none(coordinator):
 
     mock_update.assert_not_called()
     assert coordinator._states is None
+
+
+# ── resolve_managed_button_fields ─────────────────────────────────────────────
+
+
+def _make_button(button_id=1, device_id="00019edc", channel=0, job_id=None):
+    button = MagicMock()
+    button.id = button_id
+    button.device = device_id
+    button.channel = channel
+    raw = {"id": button_id, "device": device_id, "channel": channel}
+    if job_id is not None:
+        raw["job"] = job_id
+    button.raw_data = raw
+    return button
+
+
+def _make_device_for_coord(
+    comm_name_c="Dimmer Plus", comm_name_a="Dimmer", outputs=None
+):
+    device = MagicMock()
+    device.c = {"comm_name": comm_name_c, "comm_ref": "ABC", "fw_version": "1.0"}
+    device.a = {"comm_name": comm_name_a, "comm_ref": "ABC", "fw_version": "1.0"}
+    device.outputs = outputs or []
+    return device
+
+
+def _make_scene_for_coord(scene_id=1, name="Movie Night", job_id=100):
+    scene = MagicMock()
+    scene.id = scene_id
+    scene.name = name
+    scene.job = job_id
+    return scene
+
+
+def test_resolve_button_fields_empty_when_managed_buttons_none(coordinator):
+    """Returns all-None when managed_buttons has not been loaded yet."""
+    coordinator._managed_buttons = None
+    coordinator._devices = {}
+    assert coordinator.resolve_managed_button_fields(1) == {
+        "room_name": None,
+        "device_name": None,
+        "scene_name": None,
+    }
+
+
+def test_resolve_button_fields_empty_when_devices_none(coordinator):
+    """Returns all-None when the device list has not been loaded yet."""
+    coordinator._managed_buttons = {1: _make_button(button_id=1)}
+    coordinator._devices = None
+    assert coordinator.resolve_managed_button_fields(1) == {
+        "room_name": None,
+        "device_name": None,
+        "scene_name": None,
+    }
+
+
+def test_resolve_button_fields_empty_when_button_not_found(coordinator):
+    """Returns all-None when the button ID is not in managed_buttons."""
+    coordinator._managed_buttons = {}
+    coordinator._devices = {}
+    assert coordinator.resolve_managed_button_fields(99) == {
+        "room_name": None,
+        "device_name": None,
+        "scene_name": None,
+    }
+
+
+def test_resolve_button_fields_empty_when_device_not_found(coordinator):
+    """Returns all-None when the button's device ID is not in the devices dict."""
+    coordinator._managed_buttons = {1: _make_button(button_id=1, device_id="missing")}
+    coordinator._devices = {}
+    assert coordinator.resolve_managed_button_fields(1) == {
+        "room_name": None,
+        "device_name": None,
+        "scene_name": None,
+    }
+
+
+def test_resolve_button_fields_returns_device_name_without_room(coordinator):
+    """Returns device_name and None room when the device has no linked load or room."""
+    coordinator._managed_buttons = {1: _make_button(button_id=1, device_id="dev1")}
+    coordinator._devices = {"dev1": _make_device_for_coord()}
+    coordinator._loads = {}
+    coordinator._rooms = {}
+    coordinator._scenes = {}
+    result = coordinator.resolve_managed_button_fields(1)
+    assert result["device_name"] is not None
+    assert result["room_name"] is None
+    assert result["scene_name"] is None
+
+
+def test_resolve_button_fields_returns_room_from_load(coordinator):
+    """Returns room name resolved via the device output → load → room chain."""
+    load = MagicMock()
+    load.room = 42
+    device = _make_device_for_coord(outputs=[{"load": 7}])
+    coordinator._managed_buttons = {1: _make_button(button_id=1, device_id="dev1")}
+    coordinator._devices = {"dev1": device}
+    coordinator._loads = {7: load}
+    coordinator._rooms = {42: {"name": "Living Room"}}
+    coordinator._scenes = {}
+    result = coordinator.resolve_managed_button_fields(1)
+    assert result["room_name"] == "Living Room"
+
+
+def test_resolve_button_fields_returns_scene_from_matching_job(coordinator):
+    """Returns scene name when the button's job ID matches a scene's job ID."""
+    coordinator._managed_buttons = {
+        1: _make_button(button_id=1, device_id="dev1", job_id=100)
+    }
+    coordinator._devices = {"dev1": _make_device_for_coord()}
+    coordinator._loads = {}
+    coordinator._rooms = {}
+    coordinator._scenes = {1: _make_scene_for_coord(job_id=100, name="Movie Night")}
+    result = coordinator.resolve_managed_button_fields(1)
+    assert result["scene_name"] == "Movie Night"
+
+
+def test_resolve_button_fields_scene_none_when_no_matching_job(coordinator):
+    """Returns scene=None when no scene has a job that matches the button's job."""
+    coordinator._managed_buttons = {
+        1: _make_button(button_id=1, device_id="dev1", job_id=999)
+    }
+    coordinator._devices = {"dev1": _make_device_for_coord()}
+    coordinator._loads = {}
+    coordinator._rooms = {}
+    coordinator._scenes = {1: _make_scene_for_coord(job_id=100)}
+    assert coordinator.resolve_managed_button_fields(1)["scene_name"] is None
+
+
+def test_resolve_button_fields_scene_none_when_button_has_no_job(coordinator):
+    """Returns scene=None when the button has no job in its raw_data."""
+    coordinator._managed_buttons = {1: _make_button(button_id=1, device_id="dev1")}
+    coordinator._devices = {"dev1": _make_device_for_coord()}
+    coordinator._loads = {}
+    coordinator._rooms = {}
+    coordinator._scenes = {1: _make_scene_for_coord(job_id=100)}
+    assert coordinator.resolve_managed_button_fields(1)["scene_name"] is None

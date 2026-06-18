@@ -1,25 +1,8 @@
 """Various utility methods."""
 
+from __future__ import annotations
+
 from aiowiserbyfeller import Device, Load
-
-
-def resolve_load_channel_name(device: Device, pos: int) -> str:
-    """Get the button position string of a device load."""
-    buttons = len(device.outputs)
-
-    if buttons < 2:
-        return ""
-
-    ref = device.c["comm_ref"]
-
-    if ref == "3400.2.VS":
-        values_map = ["Top", "Bottom"]
-    elif buttons == 2:
-        values_map = ["Left", "Right"]
-    else:
-        values_map = ["Top Left", "Bottom Left", "Top Right", "Bottom Right"]
-
-    return " " + values_map[pos]
 
 
 def resolve_load_name(load: Load, room: dict):

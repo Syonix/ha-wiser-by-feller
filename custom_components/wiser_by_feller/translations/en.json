@@ -130,6 +130,12 @@
         "2": "Left (Bottom) Button",
         "3": "Right (Bottom) Button"
       }
+    },
+    "select_led_index": {
+      "options": {
+        "0": "Primary (Up/Plus for dimmer or motor buttons)",
+        "1": "Down / Minus (only for dimmer or motor buttons)"
+      }
     }
   },
   "issues": {
@@ -144,8 +150,8 @@
   },
   "services": {
     "status_light": {
-      "name": "Set status light",
-      "description": "Set the status light color and brightness for a µGateway device.",
+      "name": "Configure status light",
+      "description": "Configure the status light color and brightness for a Wiser by Feller device.",
       "fields": {
         "device": {
           "name": "Device",
@@ -168,6 +174,47 @@
           "description": "Button illumination brightness level when the load is turned off (0–255). When unchecked, the \"Brightness when on\" value is used."
         }
       }
+    },
+    "set_button_led_override": {
+      "name": "Set Button LED Override",
+      "description": "Set a temporary LED override on a Wiser button LED.",
+      "fields": {
+        "button_id": {
+          "name": "Button ID",
+          "description": "Wiser button ID. Use the Find Button service to discover it."
+        },
+        "led_index": {
+          "name": "LED",
+          "description": "Which LED to control on the button."
+        },
+        "rgb_color": {
+          "name": "Color",
+          "description": "LED color."
+        },
+        "effect": {
+          "name": "Effect",
+          "description": "LED blink pattern."
+        }
+      }
+    },
+    "clear_button_led_override": {
+      "name": "Clear Button LED Override",
+      "description": "Disable the temporary LED override and return to the configured Wiser LED behavior.",
+      "fields": {
+        "button_id": {
+          "name": "Button ID",
+          "description": "Wiser button ID. Use the Find Button service to discover it."
+        },
+        "led_index": {
+          "name": "LED",
+          "description": "Which LED to control on the button."
+        }
+      }
+    },
+    "find_button": {
+      "name": "Find Button",
+      "description": "Activates find-me mode: all button LEDs start blinking. Press any physical button to identify it. The button ID, device, channel, and structured label fields are returned and shown as a notification.",
+      "note_unmanaged_button": "This button is unmanaged. See docs for more information."
     }
   }
 }
