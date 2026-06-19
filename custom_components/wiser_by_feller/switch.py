@@ -104,7 +104,10 @@ class WiserSystemFlag(CoordinatorEntity, SwitchEntity):
         )
 
         self._attr_unique_id = f"{gateway}_flag_{flag.id}"
-        self._attr_name = flag.name
+        if flag.name is not None:
+            self._attr_name = flag.name
+        else:
+            self._attr_translation_key = "unnamed_flag"
         self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, gateway)})
         self._flag = flag
 
