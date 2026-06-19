@@ -26,6 +26,12 @@ async def async_get_config_entry_diagnostics(
     ]
     gateway_info_json = coordinator.gateway_info
 
+    sensors_json = (
+        [sensor.raw_data for sensor in coordinator.sensors.values()]
+        if coordinator.sensors
+        else []
+    )
+
     return {
         "entry_data": async_redact_data(entry.data, TO_REDACT),
         "gateway_info": async_redact_data(gateway_info_json, TO_REDACT),
@@ -35,6 +41,7 @@ async def async_get_config_entry_diagnostics(
         "scenes": async_redact_data(
             [scene.raw_data for scene in coordinator.scenes.values()], TO_REDACT
         ),
+        "sensors": async_redact_data(sensors_json, TO_REDACT),
     }
 
 
