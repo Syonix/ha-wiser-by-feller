@@ -451,7 +451,13 @@ class WiserCoordinator(DataUpdateCoordinator):
             self._states[data["load"]["id"]] = data["load"]["state"]
         elif "sensor" in data:
             _LOGGER.debug("Websocket sensor data update received: %s", data["sensor"])
-            self._states[data["sensor"]["id"]] = data["sensor"]
+            sid = data["sensor"]["id"]
+            # The WebSocket payload is partial (only id + value). Merge into the
+            # existing full raw_data so type/device/unit fields are preserved.
+            if sid in self._states and isinstance(self._states[sid], dict):
+                self._states[sid] = {**self._states[sid], **data["sensor"]}
+            else:
+                self._states[sid] = data["sensor"]
         elif "hvacgroup" in data:
             _LOGGER.debug(
                 "Websocket hvacgroup data update received: %s", data["hvacgroup"]
