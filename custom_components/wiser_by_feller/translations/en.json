@@ -64,6 +64,11 @@
     }
   },
   "entity": {
+    "switch": {
+      "unnamed_flag": {
+        "name": "Unnamed Flag"
+      }
+    },
     "button": {
       "identify": {
         "name": "Identify"
