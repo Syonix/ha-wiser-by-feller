@@ -143,8 +143,17 @@ async def async_setup_entry(
     entities.append(WiserLastRebootEntity(coordinator))
 
     for sensor in coordinator.sensors.values() if coordinator.sensors else []:
-        device = coordinator.devices[sensor.device]
-        sensor.raw_data = coordinator.states[sensor.id]
+        device = coordinator.devices.get(sensor.device)
+        if device is None:
+            _LOGGER.warning(
+                "Sensor %s references unknown device %s, skipping",
+                sensor.id,
+                sensor.device,
+            )
+            continue
+        state = coordinator.states.get(sensor.id)
+        if state is not None:
+            sensor.raw_data = state
 
         # Currently sensors do not return a room id, even though in the Wiser system they
         # are assigned to one. In some implementations it returns a room name. This
@@ -287,7 +296,9 @@ class WiserSensorEntity(WiserEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self._sensor.raw_data = self.coordinator.states[self._sensor.id]
+        state = self.coordinator.states.get(self._sensor.id)
+        if state is not None:
+            self._sensor.raw_data = state
         self.async_write_ha_state()
 
 
