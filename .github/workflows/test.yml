@@ -17,19 +17,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install linting dependencies
+        run: pip install -r requirements.dev.txt
       - name: Lint with ruff
-        uses: astral-sh/ruff-action@v3
-        with:
-          src: >-
-            custom_components
-            tests
+        run: ruff check custom_components tests
       - name: Lint formatting with ruff
-        uses: astral-sh/ruff-action@v3
-        with:
-          src: >-
-            custom_components
-            tests
-          args: "format --check --diff"
+        run: ruff format --check --diff custom_components tests
 
   test:
     runs-on: ubuntu-latest
