@@ -100,12 +100,14 @@ class WiserDimEntity(WiserEntity, LightEntity):
     @property
     def is_on(self) -> bool | None:
         """Return device state."""
-        return self._load.raw_state["bri"] > 0
+        bri = self._load.raw_state.get("bri")
+        return bri > 0 if bri is not None else None
 
     @property
     def brightness(self):
         """Return the brightness of this light between 0..255."""
-        return wiser_to_brightness(self._load.raw_state["bri"])
+        bri = self._load.raw_state.get("bri")
+        return wiser_to_brightness(bri) if bri is not None else None
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn on device load."""
@@ -138,12 +140,14 @@ class WiserDimTwEntity(WiserEntity, LightEntity):
     @property
     def is_on(self) -> bool | None:
         """Return device state."""
-        return self._load.raw_state["bri"] > 0
+        bri = self._load.raw_state.get("bri")
+        return bri > 0 if bri is not None else None
 
     @property
     def brightness(self) -> int | None:
         """Return the brightness of this light between 0..255."""
-        return wiser_to_brightness(self._load.raw_state["bri"])
+        bri = self._load.raw_state.get("bri")
+        return wiser_to_brightness(bri) if bri is not None else None
 
     @property
     def color_temp_kelvin(self) -> int | None:
@@ -188,12 +192,14 @@ class WiserDimRgbwEntity(WiserEntity, LightEntity):
     @property
     def is_on(self) -> bool | None:
         """Return device state."""
-        return self._load.raw_state["bri"] > 0
+        bri = self._load.raw_state.get("bri")
+        return bri > 0 if bri is not None else None
 
     @property
     def brightness(self) -> int | None:
         """Return the brightness of this light between 0..255."""
-        return wiser_to_brightness(self._load.raw_state["bri"])
+        bri = self._load.raw_state.get("bri")
+        return wiser_to_brightness(bri) if bri is not None else None
 
     @property
     def rgbw_color(self) -> tuple[int, int, int, int] | None:
