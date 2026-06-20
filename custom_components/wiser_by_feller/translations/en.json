@@ -189,6 +189,9 @@
     },
     "specify_gateway": {
       "message": "Multiple µGateways are configured. Select which one in the µGateway field."
+    },
+    "unmanaged_button": {
+      "message": "This button is unmanaged. See the LED Control documentation for more information: https://github.com/Syonix/ha-wiser-by-feller/blob/main/docs/led-control.md"
     }
   },
   "services": {
@@ -265,7 +268,6 @@
     "find_button": {
       "name": "Find Button",
       "description": "Activates find-me mode: all button LEDs start blinking. Press any physical button to identify it. The button ID, device, channel, and structured label fields are returned and shown as a notification.",
-      "note_unmanaged_button": "This button is unmanaged. See docs for more information.",
       "fields": {
         "config_entry_id": {
           "name": "µGateway",

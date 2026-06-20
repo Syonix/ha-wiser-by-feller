@@ -92,7 +92,7 @@ Wiser scenes are integrated as native Home Assistant scenes, allowing to trigger
 The integration listens to state changes via a Websocket, leading to near-instant updates in Home Assistant
 
 ### 🚨 Status LEDs
-Wiser by Feller devices have customizable status LEDs that can indicate load states or system status. The integration supports two ways to control these LEDs. For detailed information on both methods, including examples and advanced features, see the [LED Control documentation](docs/led_control.md).
+Wiser by Feller devices have customizable status LEDs that can indicate load states or system status. The integration supports two ways to control these LEDs. For detailed information on both methods, including examples and advanced features, see the [LED Control documentation](docs/led-control.md).
 
 ### 🕹️ System Flag
 Already configured system flags appear as switches in Home Assistant. Unfortunately currently there is no way to configure them other than via API. An integrated management of flags is planned (See #20).

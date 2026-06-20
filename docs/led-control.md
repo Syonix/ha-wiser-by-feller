@@ -2,14 +2,14 @@
 
 Wiser by Feller devices have customizable status LEDs that can indicate load states or system status. There are two ways to control these LEDs, which are fundamentally different in how they work and what they are meant to be used for:
 
-| | ⚙️ Device Configuration | 🕐 Temporary Override |
-|---|---|---|
-| **What it changes** | The LED configuration stored on the device | A temporary override on top of the configuration |
-| **Targeted by** | Wiser device and button position | Button ID |
-| **Reacts to load state** | ✅ Yes | ❌ No |
-| **Persists** | Until reconfigured (can be overridden) | Until reboot or cleared |
-| **Performance** | 🐌 Slow | 🚀 Fast |
-| **Purpose** | To represent load state (e.g. show if the light is on) or use as orientation light in the dark | Use in HA automations (e.g. notifications, show air quality, etc.)
+|                          | ⚙️ Device Configuration                                                                        | 🕐 Temporary Override                                              |
+|--------------------------|------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
+| **What it changes**      | The LED configuration stored on the device                                                     | A temporary override on top of the configuration                   |
+| **Targeted by**          | Wiser device and button position                                                               | Button ID                                                          |
+| **Reacts to load state** | ✅ Yes                                                                                          | ❌ No                                                               |
+| **Persists**             | Until reconfigured (can be overridden)                                                         | Until reboot or cleared                                            |
+| **Performance**          | 🐌 Slow                                                                                        | 🚀 Fast                                                            |
+| **Purpose**              | To represent load state (e.g. show if the light is on) or use as orientation light in the dark | Use in HA automations (e.g. notifications, show air quality, etc.) |
 
 ## ⚙️ Device Configuration
 The first method modifies the LED configuration directly on the device. This is the same configuration available in the Wiser apps (Frontset-Eigenschaften). You set a color and brightness levels for when the load is on and when it is off, and the device automatically switches the LEDs based on the actual load state.
