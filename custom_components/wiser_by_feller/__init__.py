@@ -263,7 +263,18 @@ async def async_remove_stale_devices(
     entry: ConfigEntry,
     coord: WiserCoordinator,
 ) -> None:
-    """Remove device registry entries no longer present in the Wiser gateway."""
+    """Remove device registry entries no longer present in the Wiser gateway.
+
+    Only runs when the coordinator holds a complete picture of the loads and
+    devices. If the gateway returned partial data (e.g. a transient failure or
+    the "Allow missing µGateway data" option), the expected set would be
+    incomplete, and we could wrongly delete valid devices together with their
+    entities, history and automations. In that case we skip cleanup entirely.
+    """
+    if coord.loads is None or coord.devices is None:
+        _LOGGER.debug("Skipping stale device cleanup: coordinator data is incomplete.")
+        return
+
     device_registry = dr.async_get(hass)
 
     expected: set[str] = set()
@@ -273,10 +284,10 @@ async def async_remove_stale_devices(
     else:
         expected.add(entry.title)
 
-    for load in (coord.loads or {}).values():
+    for load in coord.loads.values():
         expected.add(f"{load.device}_{load.channel}")
 
-    for device in (coord.devices or {}).values():
+    for device in coord.devices.values():
         expected.add(device.id)
 
     for hvac_group in (coord.hvac_groups or {}).values():
@@ -286,13 +297,18 @@ async def async_remove_stale_devices(
     for device_entry in dr.async_entries_for_config_entry(
         device_registry, entry.entry_id
     ):
-        for domain, identifier in device_entry.identifiers:
-            if domain == DOMAIN and identifier not in expected:
-                _LOGGER.debug(
-                    "Removing stale device %s (%s)", device_entry.name, identifier
-                )
-                device_registry.async_remove_device(device_entry.id)
-                break
+        if any(
+            domain == DOMAIN and identifier not in expected
+            for domain, identifier in device_entry.identifiers
+        ):
+            _LOGGER.debug(
+                "Detaching stale device %s from config entry", device_entry.name
+            )
+            # Detach this config entry rather than deleting outright: HA removes
+            # the device only if no other config entry still references it.
+            device_registry.async_update_device(
+                device_entry.id, remove_config_entry_id=entry.entry_id
+            )
 
 
 async def async_setup_gateway(

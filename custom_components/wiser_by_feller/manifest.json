@@ -19,8 +19,7 @@
     "aiowiserbyfeller"
   ],
   "requirements": [
-    "aiowiserbyfeller==2.2.0",
-    "websockets>=13.0"
+    "aiowiserbyfeller==2.2.0"
   ],
   "version": "0.2.4",
   "zeroconf": [
