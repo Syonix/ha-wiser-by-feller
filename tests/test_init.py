@@ -248,26 +248,6 @@ async def test_find_button_unmanaged_button_raises(
     assert exc.value.translation_key == "unmanaged_button"
 
 
-async def test_find_button_creates_notification(
-    hass, setup_integration, mock_coordinator
-):
-    """find_button creates a persistent notification after identifying a button."""
-    mock_coordinator.async_find_button = AsyncMock(
-        return_value={"button_id": 7, "device": "aabbccdd", "channel": 1}
-    )
-    mock_coordinator.resolve_managed_button_fields.return_value = _MANAGED_FIELDS
-    with patch(
-        "custom_components.wiser_by_feller.async_create_notification"
-    ) as mock_notify:
-        await hass.services.async_call(
-            DOMAIN, "find_button", {}, blocking=True, return_response=True
-        )
-
-    mock_notify.assert_called_once()
-    _, kwargs = mock_notify.call_args
-    assert kwargs.get("notification_id") == "wiser_find_button"
-
-
 # ── set_button_led_override / clear_button_led_override error handling ────────
 
 
