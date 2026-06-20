@@ -12,7 +12,7 @@ from homeassistant.components.light import ATTR_RGB_COLOR
 from homeassistant.components.persistent_notification import (
     async_create as async_create_notification,
 )
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
@@ -46,6 +46,7 @@ SERVICE_FIND_BUTTON = "find_button"
 ATTR_BUTTON_ID = "button_id"
 ATTR_LED_INDEX = "led_index"
 ATTR_EFFECT = "effect"
+ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 
 
 def rgb_tuple_to_hex(rgb: tuple[int, int, int]) -> str:
@@ -67,6 +68,7 @@ def validate_rgb_color(value: Any) -> tuple[int, int, int]:
 
 SET_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
     {
+        vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
         vol.Required(ATTR_BUTTON_ID): cv.positive_int,
         vol.Required(ATTR_LED_INDEX, default="0"): vol.In(["0", "1"]),
         vol.Required(ATTR_RGB_COLOR, default=(0, 255, 0)): validate_rgb_color,
@@ -78,14 +80,63 @@ SET_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
 
 CLEAR_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
     {
+        vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
         vol.Required(ATTR_BUTTON_ID): cv.positive_int,
         vol.Required(ATTR_LED_INDEX, default="0"): vol.In(["0", "1"]),
     }
 )
 
+FIND_BUTTON_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+    }
+)
+
+
+def _resolve_coordinator(
+    hass: HomeAssistant, entry_id: str | None = None
+) -> WiserCoordinator:
+    """Resolve the coordinator for a gateway-wide button service.
+
+    Button ids are unique only per µGateway, so the caller selects the gateway
+    via its config entry. When exactly one gateway is loaded the selection is
+    optional and that gateway is used; with several loaded, one must be chosen.
+    """
+    loaded = [
+        entry
+        for entry in hass.config_entries.async_entries(DOMAIN)
+        if entry.state is ConfigEntryState.LOADED and entry.runtime_data is not None
+    ]
+
+    if entry_id is not None:
+        for entry in loaded:
+            if entry.entry_id == entry_id:
+                return entry.runtime_data
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="no_gateway_loaded",
+        )
+
+    if not loaded:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="no_gateway_loaded",
+        )
+    if len(loaded) > 1:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="specify_gateway",
+        )
+    return loaded[0].runtime_data
+
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Wiser by Feller integration."""
+    """Set up the Wiser by Feller integration.
+
+    All service actions are registered here, once per integration load, so they
+    exist even when no config entry is loaded and are never re-registered or
+    removed per entry.
+    """
 
     async def handle_status_light(call: ServiceCall) -> None:
         device_id = call.data["device"]
@@ -109,32 +160,11 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             translation_placeholders={"device_id": device_id},
         )
 
-    hass.services.async_register(DOMAIN, SERVICE_STATUS_LIGHT, handle_status_light)
-    return True
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Wiser by Feller from a config entry."""
-    session = async_get_clientsession(hass)
-    auth = Auth(session, entry.data["host"], token=entry.data["token"])
-    api = WiserByFellerAPI(auth)
-
-    wiser_coordinator = WiserCoordinator(
-        hass, api, entry.data["host"], entry.data["token"], entry.options
-    )
-    wiser_coordinator.ws_init()
-
-    entry.runtime_data = wiser_coordinator
-
-    await wiser_coordinator.async_config_entry_first_refresh()
-    await async_setup_gateway(hass, entry, wiser_coordinator)
-    await async_remove_stale_devices(hass, entry, wiser_coordinator)
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
     async def async_set_button_led_override(call: ServiceCall) -> None:
         """Set button LED override."""
+        coordinator = _resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
         try:
-            await wiser_coordinator.api.async_set_button_led(
+            await coordinator.api.async_set_button_led(
                 button_id=call.data[ATTR_BUTTON_ID],
                 led_index=int(call.data[ATTR_LED_INDEX]),
                 on=True,
@@ -146,8 +176,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def async_clear_button_led_override(call: ServiceCall) -> None:
         """Clear button LED override."""
+        coordinator = _resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
         try:
-            await wiser_coordinator.api.async_set_button_led(
+            await coordinator.api.async_set_button_led(
                 button_id=call.data[ATTR_BUTTON_ID],
                 led_index=int(call.data[ATTR_LED_INDEX]),
                 on=False,
@@ -159,7 +190,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     async def async_find_button_service(call: ServiceCall) -> dict[str, Any]:
         """Find a physical button by activating find-me mode."""
-        result = await wiser_coordinator.async_find_button()
+        coordinator = _resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
+        result = await coordinator.async_find_button()
 
         button_id = result.get("button_id")
         device = result.get("device")
@@ -169,7 +201,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         fields: dict = {"room_name": None, "device_name": None, "scene_name": None}
 
         if button_id is not None:
-            fields = wiser_coordinator.resolve_managed_button_fields(button_id)
+            fields = coordinator.resolve_managed_button_fields(button_id)
         elif device is not None:
             translations = await async_get_translations(
                 hass, hass.config.language, "services", [DOMAIN]
@@ -221,26 +253,46 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             "note": note,
         }
 
+    hass.services.async_register(DOMAIN, SERVICE_STATUS_LIGHT, handle_status_light)
     hass.services.async_register(
         DOMAIN,
         SERVICE_SET_BUTTON_LED_OVERRIDE,
         async_set_button_led_override,
         schema=SET_BUTTON_LED_OVERRIDE_SCHEMA,
     )
-
     hass.services.async_register(
         DOMAIN,
         SERVICE_CLEAR_BUTTON_LED_OVERRIDE,
         async_clear_button_led_override,
         schema=CLEAR_BUTTON_LED_OVERRIDE_SCHEMA,
     )
-
     hass.services.async_register(
         DOMAIN,
         SERVICE_FIND_BUTTON,
         async_find_button_service,
+        schema=FIND_BUTTON_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
+    return True
+
+
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Set up Wiser by Feller from a config entry."""
+    session = async_get_clientsession(hass)
+    auth = Auth(session, entry.data["host"], token=entry.data["token"])
+    api = WiserByFellerAPI(auth)
+
+    wiser_coordinator = WiserCoordinator(
+        hass, api, entry.data["host"], entry.data["token"], entry.options
+    )
+    wiser_coordinator.ws_init()
+
+    entry.runtime_data = wiser_coordinator
+
+    await wiser_coordinator.async_config_entry_first_refresh()
+    await async_setup_gateway(hass, entry, wiser_coordinator)
+    await async_remove_stale_devices(hass, entry, wiser_coordinator)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
 
@@ -249,13 +301,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     coordinator: WiserCoordinator = entry.runtime_data
     await coordinator.ws_close()
-
-    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.services.async_remove(DOMAIN, SERVICE_SET_BUTTON_LED_OVERRIDE)
-        hass.services.async_remove(DOMAIN, SERVICE_CLEAR_BUTTON_LED_OVERRIDE)
-        hass.services.async_remove(DOMAIN, SERVICE_FIND_BUTTON)
-
-    return unload_ok
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
 async def async_remove_stale_devices(

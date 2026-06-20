@@ -7,6 +7,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.wiser_by_feller import (
     async_remove_stale_devices,
@@ -165,17 +166,20 @@ async def test_unload_entry_calls_ws_close(hass, setup_integration, mock_coordin
     mock_coordinator.ws_close.assert_called_once()
 
 
-async def test_unload_entry_keeps_service(hass, setup_integration):
-    """async_unload_entry does not remove the 'status_light' service.
+async def test_unload_entry_keeps_services(hass, setup_integration):
+    """async_unload_entry does not remove any service.
 
-    The service is registered once in async_setup (not per config entry) so it
-    persists as long as the integration is loaded, regardless of how many entries
-    are active.
+    All services are registered once in async_setup (not per config entry) so
+    they persist as long as the integration is loaded, regardless of how many
+    entries are active.
     """
     entry = setup_integration
     await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     assert hass.services.has_service(DOMAIN, "status_light")
+    assert hass.services.has_service(DOMAIN, "set_button_led_override")
+    assert hass.services.has_service(DOMAIN, "clear_button_led_override")
+    assert hass.services.has_service(DOMAIN, "find_button")
 
 
 # ── find_button service ───────────────────────────────────────────────────────
@@ -324,5 +328,78 @@ async def test_clear_button_led_override_raises_service_error_on_api_failure(
             DOMAIN,
             "clear_button_led_override",
             {"button_id": 43, "led_index": "0"},
+            blocking=True,
+        )
+
+
+# ── gateway selection for button services ─────────────────────────────────────
+
+
+async def test_button_service_uses_explicit_gateway(
+    hass, setup_integration, mock_coordinator
+):
+    """An explicit config_entry_id routes the call to that gateway's coordinator."""
+    entry = setup_integration
+    mock_coordinator.api.async_set_button_led = AsyncMock()
+
+    await hass.services.async_call(
+        DOMAIN,
+        "set_button_led_override",
+        {
+            "config_entry_id": entry.entry_id,
+            "button_id": 7,
+            "led_index": "0",
+            "rgb_color": [1, 2, 3],
+        },
+        blocking=True,
+    )
+
+    mock_coordinator.api.async_set_button_led.assert_awaited_once()
+
+
+async def test_button_service_unknown_gateway_raises(hass, setup_integration):
+    """An unknown config_entry_id raises a validation error."""
+    with pytest.raises(ServiceValidationError):
+        await hass.services.async_call(
+            DOMAIN,
+            "set_button_led_override",
+            {
+                "config_entry_id": "does-not-exist",
+                "button_id": 7,
+                "led_index": "0",
+                "rgb_color": [1, 2, 3],
+            },
+            blocking=True,
+        )
+
+
+async def test_button_service_requires_gateway_when_multiple(
+    hass, setup_integration, mock_coordinator
+):
+    """With several µGateways loaded and no selection, the service errors clearly."""
+    # A first gateway is already loaded via setup_integration; add a second.
+    second = MockConfigEntry(
+        domain=DOMAIN,
+        title="Second Wiser",
+        data={"host": "192.168.1.101", "token": "t"},
+        unique_id="SECOND_SN",
+    )
+    second.add_to_hass(hass)
+    with (
+        patch("custom_components.wiser_by_feller.Auth"),
+        patch("custom_components.wiser_by_feller.WiserByFellerAPI"),
+        patch(
+            "custom_components.wiser_by_feller.WiserCoordinator",
+            return_value=mock_coordinator,
+        ),
+    ):
+        await hass.config_entries.async_setup(second.entry_id)
+        await hass.async_block_till_done()
+
+    with pytest.raises(ServiceValidationError, match="Multiple"):
+        await hass.services.async_call(
+            DOMAIN,
+            "set_button_led_override",
+            {"button_id": 1, "led_index": "0", "rgb_color": [255, 0, 0]},
             blocking=True,
         )

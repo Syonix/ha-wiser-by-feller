@@ -40,6 +40,14 @@ set_button_led_override:
   name: Set Button LED Override
   description: Set a temporary LED override on a Wiser button LED.
   fields:
+    config_entry_id:
+      name: µGateway
+      description: The µGateway the button belongs to. Optional if you only have one; required when multiple µGateways are configured.
+      required: false
+      selector:
+        config_entry:
+          integration: wiser_by_feller
+
     button_id:
       name: Button ID
       description: Wiser button ID. Use the `find_button` service to discover it.
@@ -89,6 +97,14 @@ clear_button_led_override:
   name: Clear Button LED Override
   description: Disable the temporary LED override and return to the configured Wiser LED behavior.
   fields:
+    config_entry_id:
+      name: µGateway
+      description: The µGateway the button belongs to. Optional if you only have one; required when multiple µGateways are configured.
+      required: false
+      selector:
+        config_entry:
+          integration: wiser_by_feller
+
     button_id:
       name: Button ID
       description: Wiser button ID. Use the Find Button service to discover it.
@@ -114,3 +130,11 @@ find_button:
     Activates find-me mode on all buttons. All button LEDs start blinking.
     Press any physical button to identify it. The button ID, device, channel,
     label, and LED options are returned as the service response and shown as a notification.
+  fields:
+    config_entry_id:
+      name: µGateway
+      description: The µGateway to activate find-me mode on. Optional if you only have one; required when multiple µGateways are configured.
+      required: false
+      selector:
+        config_entry:
+          integration: wiser_by_feller
