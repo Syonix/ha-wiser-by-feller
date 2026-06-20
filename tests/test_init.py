@@ -215,13 +215,13 @@ async def test_find_button_managed_button_returns_fields(
     assert response["room_name"] == "Living Room"
     assert response["device_name"] == "Dimmer Plus"
     assert response["scene_name"] is None
-    assert response["note"] is None
+    assert "note" not in response
 
 
-async def test_find_button_managed_button_no_note(
+async def test_find_button_managed_button_returns_no_note(
     hass, setup_integration, mock_coordinator
 ):
-    """Managed button: note is None regardless of translations."""
+    """Managed button responses never carry a note field."""
     mock_coordinator.async_find_button = AsyncMock(
         return_value={"button_id": 5, "device": "aabbccdd", "channel": 0}
     )
@@ -230,51 +230,22 @@ async def test_find_button_managed_button_no_note(
         DOMAIN, "find_button", {}, blocking=True, return_response=True
     )
 
-    assert response["note"] is None
+    assert "note" not in response
 
 
-async def test_find_button_unmanaged_button_sets_note(
+async def test_find_button_unmanaged_button_raises(
     hass, setup_integration, mock_coordinator
 ):
-    """Unmanaged button: response contains device/channel and a translated note."""
+    """Unmanaged button raises a validation error pointing to the docs."""
     mock_coordinator.async_find_button = AsyncMock(
         return_value={"button_id": None, "device": "00019edc", "channel": 0}
     )
-    with patch(
-        "custom_components.wiser_by_feller.async_get_translations",
-        return_value={
-            f"component.{DOMAIN}.services.find_button.note_unmanaged_button": "Unmanaged note."
-        },
-    ):
-        response = await hass.services.async_call(
+    with pytest.raises(ServiceValidationError) as exc:
+        await hass.services.async_call(
             DOMAIN, "find_button", {}, blocking=True, return_response=True
         )
 
-    assert response["button_id"] is None
-    assert response["device"] == "00019edc"
-    assert response["channel"] == 0
-    assert response["note"] == "Unmanaged note."
-    assert response["room_name"] is None
-    assert response["device_name"] is None
-    assert response["scene_name"] is None
-
-
-async def test_find_button_unmanaged_falls_back_when_translation_missing(
-    hass, setup_integration, mock_coordinator
-):
-    """Unmanaged button: falls back to the hardcoded English note when translation key absent."""
-    mock_coordinator.async_find_button = AsyncMock(
-        return_value={"button_id": None, "device": "00019edc", "channel": 0}
-    )
-    with patch(
-        "custom_components.wiser_by_feller.async_get_translations",
-        return_value={},
-    ):
-        response = await hass.services.async_call(
-            DOMAIN, "find_button", {}, blocking=True, return_response=True
-        )
-
-    assert "unmanaged" in response["note"].lower()
+    assert exc.value.translation_key == "unmanaged_button"
 
 
 async def test_find_button_creates_notification(

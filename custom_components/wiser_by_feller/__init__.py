@@ -19,7 +19,6 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
-from homeassistant.helpers.translation import async_get_translations
 from homeassistant.helpers.typing import ConfigType
 import voluptuous as vol
 
@@ -197,18 +196,17 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         device = result.get("device")
         channel = result.get("channel")
 
-        note = None
         fields: dict = {"room_name": None, "device_name": None, "scene_name": None}
 
         if button_id is not None:
             fields = coordinator.resolve_managed_button_fields(button_id)
         elif device is not None:
-            translations = await async_get_translations(
-                hass, hass.config.language, "services", [DOMAIN]
-            )
-            note = translations.get(
-                f"component.{DOMAIN}.services.find_button.note_unmanaged_button",
-                "This button is unmanaged. See docs for more information.",
+            # The button exists physically but isn't managed by the gateway, so
+            # there is nothing to control. Surface this as a validation error
+            # pointing the user to the documentation.
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="unmanaged_button",
             )
 
         parts = [
@@ -233,8 +231,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             lines.append(f"Device: `{device}`")
         if channel is not None:
             lines.append(f"Channel: `{channel}`")
-        if note is not None:
-            lines.append(f"_{note}_")
 
         async_create_notification(
             hass,
@@ -250,7 +246,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             "room_name": fields["room_name"],
             "device_name": fields["device_name"],
             "scene_name": fields["scene_name"],
-            "note": note,
         }
 
     hass.services.async_register(DOMAIN, SERVICE_STATUS_LIGHT, handle_status_light)
