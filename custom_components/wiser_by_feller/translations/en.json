@@ -183,6 +183,12 @@
     },
     "multiple_wlan_devices": {
       "message": "Multiple WLAN devices found in the same network: {first} and {second}. Only one µGateway per network is supported."
+    },
+    "no_gateway_loaded": {
+      "message": "No Wiser µGateway is currently loaded."
+    },
+    "specify_gateway": {
+      "message": "Multiple µGateways are configured. Select which one in the µGateway field."
     }
   },
   "services": {
@@ -216,6 +222,10 @@
       "name": "Set Button LED Override",
       "description": "Set a temporary LED override on a Wiser button LED.",
       "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "The µGateway the button belongs to. Optional with a single gateway; required when multiple are configured."
+        },
         "button_id": {
           "name": "Button ID",
           "description": "Wiser button ID. Use the Find Button service to discover it."
@@ -238,6 +248,10 @@
       "name": "Clear Button LED Override",
       "description": "Disable the temporary LED override and return to the configured Wiser LED behavior.",
       "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "The µGateway the button belongs to. Optional with a single gateway; required when multiple are configured."
+        },
         "button_id": {
           "name": "Button ID",
           "description": "Wiser button ID. Use the Find Button service to discover it."
@@ -251,7 +265,13 @@
     "find_button": {
       "name": "Find Button",
       "description": "Activates find-me mode: all button LEDs start blinking. Press any physical button to identify it. The button ID, device, channel, and structured label fields are returned and shown as a notification.",
-      "note_unmanaged_button": "This button is unmanaged. See docs for more information."
+      "note_unmanaged_button": "This button is unmanaged. See docs for more information.",
+      "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "The µGateway to activate find-me mode on. Optional with a single gateway; required when multiple are configured."
+        }
+      }
     }
   }
 }
