@@ -20,13 +20,11 @@ async def async_get_config_entry_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a config entry."""
     coordinator: WiserCoordinator = entry.runtime_data
-    assert coordinator.loads is not None
-    assert coordinator.devices is not None
-    assert coordinator.scenes is not None
-    loads_json = [load.raw_data for load in coordinator.loads.values()]
-    devices_json = [
-        coordinator.devices[device_id].raw_data for device_id in coordinator.devices
-    ]
+
+    # Diagnostics should never fail just because some data has not (yet) loaded.
+    # Missing sections are emitted as empty rather than raising.
+    loads_json = [load.raw_data for load in (coordinator.loads or {}).values()]
+    devices_json = [device.raw_data for device in (coordinator.devices or {}).values()]
     gateway_info_json = coordinator.gateway_info
 
     sensors_json = (
@@ -39,10 +37,10 @@ async def async_get_config_entry_diagnostics(
         "entry_data": async_redact_data(entry.data, TO_REDACT),
         "gateway_info": async_redact_data(gateway_info_json, TO_REDACT),
         "loads": async_redact_data(loads_json, TO_REDACT),
-        "rooms": async_redact_data(coordinator.rooms, TO_REDACT),
+        "rooms": async_redact_data(coordinator.rooms or {}, TO_REDACT),
         "devices": async_redact_data(devices_json, TO_REDACT),
         "scenes": async_redact_data(
-            [scene.raw_data for scene in coordinator.scenes.values()], TO_REDACT
+            [scene.raw_data for scene in (coordinator.scenes or {}).values()], TO_REDACT
         ),
         "sensors": async_redact_data(sensors_json, TO_REDACT),
     }
@@ -53,8 +51,6 @@ async def async_get_device_diagnostics(
 ) -> dict[str, Any]:
     """Return diagnostics for a device."""
     coordinator: WiserCoordinator = entry.runtime_data
-    assert coordinator.scenes is not None
-    assert coordinator.devices is not None
     result: dict[str, Any] = {}
     result["device"] = async_redact_data(
         json.loads(device.json_repr or b"{}"), TO_REDACT
@@ -63,11 +59,12 @@ async def async_get_device_diagnostics(
     if device.name == f"{entry.title} µGateway":
         result["gateway_info"] = async_redact_data(coordinator.gateway_info, TO_REDACT)
         result["scenes"] = async_redact_data(
-            [scene.raw_data for scene in coordinator.scenes.values()], TO_REDACT
+            [scene.raw_data for scene in (coordinator.scenes or {}).values()], TO_REDACT
         )
     else:
         device_id = next(iter(device.identifiers))[1].partition("_")[0]
-        device_data = coordinator.devices[device_id].raw_data
-        result["device_data"] = async_redact_data(device_data, TO_REDACT)
+        wiser_device = (coordinator.devices or {}).get(device_id)
+        if wiser_device is not None:
+            result["device_data"] = async_redact_data(wiser_device.raw_data, TO_REDACT)
 
     return result
