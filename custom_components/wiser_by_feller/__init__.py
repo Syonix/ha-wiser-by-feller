@@ -9,9 +9,6 @@ from aiowiserbyfeller import Auth, UnsuccessfulRequest, WiserByFellerAPI
 from aiowiserbyfeller.enum import BlinkPattern
 from aiowiserbyfeller.util import parse_wiser_device_ref_c
 from homeassistant.components.light import ATTR_RGB_COLOR
-from homeassistant.components.persistent_notification import (
-    async_create as async_create_notification,
-)
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
@@ -208,36 +205,6 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 translation_domain=DOMAIN,
                 translation_key="unmanaged_button",
             )
-
-        parts = [
-            p
-            for p in [fields["room_name"], fields["device_name"], fields["scene_name"]]
-            if p is not None
-        ]
-        title = (
-            " — ".join(parts)
-            if parts
-            else (
-                f"Device {device}" + (f" Ch.{channel}" if channel is not None else "")
-                if device is not None
-                else "Unknown button"
-            )
-        )
-
-        lines = [f"**{title}**"]
-        if button_id is not None:
-            lines.append(f"Button ID: `{button_id}`")
-        if device is not None:
-            lines.append(f"Device: `{device}`")
-        if channel is not None:
-            lines.append(f"Channel: `{channel}`")
-
-        async_create_notification(
-            hass,
-            "\n\n".join(lines),
-            title="Wiser Button Identified",
-            notification_id="wiser_find_button",
-        )
 
         return {
             "button_id": button_id,
