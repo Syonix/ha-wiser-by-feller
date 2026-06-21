@@ -30,11 +30,24 @@ from .const import (
     DEFAULT_API_USER,
     DEFAULT_IMPORT_USER,
     DOMAIN,
+    IMPORT_USER_UNKNOWN,
     OPTIONS_ALLOW_MISSING_GATEWAY_DATA,
 )
 from .exceptions import CannotConnect, InvalidAuth
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _import_user_form_default(stored: str | None) -> str:
+    """Resolve the import user prefilled in a form.
+
+    A missing or unknown stored value must not be offered as an actual default
+    (it would be sent to claim() verbatim), so fall back to the real default.
+    """
+    if not stored or stored == IMPORT_USER_UNKNOWN:
+        return DEFAULT_IMPORT_USER
+    return stored
+
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
@@ -203,6 +216,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "sn": info["sn"],
             "host": user_input[CONF_HOST],
             "username": user_input[CONF_USERNAME],
+            CONF_IMPORTUSER: user_input[CONF_IMPORTUSER],
         }
 
     async def async_step_reconfigure(self, user_input: dict[str, Any] | None = None):
@@ -255,7 +269,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         ),
                     ): cv.string,
                     vol.Required(
-                        CONF_IMPORTUSER, default=DEFAULT_IMPORT_USER
+                        CONF_IMPORTUSER,
+                        default=_import_user_form_default(
+                            reconfigure_entry.data.get(CONF_IMPORTUSER)
+                        ),
                     ): cv.string,
                 }
             ),
@@ -308,7 +325,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_USERNAME, DEFAULT_API_USER
                         ),
                     ): str,
-                    vol.Required(CONF_IMPORTUSER, default=DEFAULT_IMPORT_USER): str,
+                    vol.Required(
+                        CONF_IMPORTUSER,
+                        default=_import_user_form_default(
+                            self._reauth_entry_data.get(CONF_IMPORTUSER)
+                        ),
+                    ): str,
                 }
             ),
             errors=errors,

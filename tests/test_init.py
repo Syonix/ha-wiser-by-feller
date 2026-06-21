@@ -13,7 +13,11 @@ from custom_components.wiser_by_feller import (
     async_remove_stale_devices,
     async_setup_gateway,
 )
-from custom_components.wiser_by_feller.const import DOMAIN
+from custom_components.wiser_by_feller.const import (
+    CONF_IMPORTUSER,
+    DOMAIN,
+    IMPORT_USER_UNKNOWN,
+)
 
 # ── setup ────────────────────────────────────────────────────────────────────
 
@@ -22,6 +26,35 @@ async def test_setup_entry_sets_runtime_data(hass, setup_integration, mock_coord
     """async_setup_entry stores the coordinator in entry.runtime_data."""
     entry = setup_integration
     assert entry.runtime_data is mock_coordinator
+
+
+async def test_setup_entry_backfills_unknown_import_user(hass, setup_integration):
+    """Legacy entries without an import user are marked unknown, not guessed."""
+    entry = setup_integration
+    assert entry.data[CONF_IMPORTUSER] == IMPORT_USER_UNKNOWN
+
+
+async def test_setup_entry_keeps_existing_import_user(
+    hass, mock_config_entry, mock_coordinator
+):
+    """A stored import user is preserved and never overwritten on setup."""
+    mock_config_entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        mock_config_entry,
+        data={**mock_config_entry.data, CONF_IMPORTUSER: "installer"},
+    )
+    with (
+        patch("custom_components.wiser_by_feller.Auth"),
+        patch("custom_components.wiser_by_feller.WiserByFellerAPI"),
+        patch(
+            "custom_components.wiser_by_feller.WiserCoordinator",
+            return_value=mock_coordinator,
+        ),
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert mock_config_entry.data[CONF_IMPORTUSER] == "installer"
 
 
 async def test_setup_entry_calls_ws_init(hass, setup_integration, mock_coordinator):

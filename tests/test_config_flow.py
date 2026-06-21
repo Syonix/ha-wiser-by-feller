@@ -65,6 +65,7 @@ async def test_form_success(
         "token": MOCK_TOKEN,
         "sn": MOCK_SN,
         "username": MOCK_USERNAME,
+        CONF_IMPORTUSER: MOCK_IMPORT_USER,
         "title": MOCK_SITE_NAME,
     }
     assert len(hass.config_entries.async_entries(DOMAIN)) == 1
