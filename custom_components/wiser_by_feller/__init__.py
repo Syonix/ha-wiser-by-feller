@@ -19,7 +19,13 @@ import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 import voluptuous as vol
 
-from .const import DOMAIN, LED_OFF_COLOR, MANUFACTURER
+from .const import (
+    CONF_IMPORTUSER,
+    DOMAIN,
+    IMPORT_USER_UNKNOWN,
+    LED_OFF_COLOR,
+    MANUFACTURER,
+)
 from .coordinator import WiserCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -240,6 +246,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up Wiser by Feller from a config entry."""
+    # Entries created before the import user was persisted have no record of the
+    # user the configuration was copied from. The original choice is not
+    # recoverable, so mark it explicitly as unknown rather than guessing a value
+    # that would imply false certainty in diagnostics.
+    if CONF_IMPORTUSER not in entry.data:
+        hass.config_entries.async_update_entry(
+            entry,
+            data={**entry.data, CONF_IMPORTUSER: IMPORT_USER_UNKNOWN},
+        )
+
     session = async_get_clientsession(hass)
     auth = Auth(session, entry.data["host"], token=entry.data["token"])
     api = WiserByFellerAPI(auth)
