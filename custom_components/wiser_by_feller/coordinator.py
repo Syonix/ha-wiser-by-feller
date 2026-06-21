@@ -406,7 +406,7 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
                         await self.async_update_managed_buttons()
                 except Exception as err:  # noqa: BLE001
                     _LOGGER.warning(
-                        "Failed to load managed buttons, find_button service will not resolve labels: %s",
+                        "Failed to load managed buttons, find_button service will not resolve labels. Fix this by updating your µGateway. (Error: %s)",
                         err,
                     )
                     self._managed_buttons = {}
