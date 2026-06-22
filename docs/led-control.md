@@ -37,13 +37,13 @@ Before you can override an LED, you need to find the button ID:
 > Button IDs are only unique per µGateway. If you have more than one µGateway configured, you must select which one a service call targets via the **µGateway** field (`config_entry_id`). With a single µGateway the field is optional and that gateway is used automatically.
 
 > [!NOTE]
-> If you press a button that is not yet configured, the service does not return a button ID and directs you to the documentation instead. See [Configuring Buttons in the Wiser Gateway](#️-configuring-buttons-in-the-wiser-gateway) below.
+> If you press a button that is not yet configured, the service does not return a button ID and directs you to the documentation instead. See [Configuring Buttons in the Wiser Gateway](#%EF%B8%8F-configuring-buttons-in-the-wiser-gateway) below.
 
 ### 🎨 Overriding LEDs
 Once you have a button ID, use the **override LED** service to set the LED state. You specify the button ID, the color as RGB values, and a blink pattern.
 
 > [!IMPORTANT]
-> The override remains active until the device reboots or you explicitly clear it.
+> The override remains active until the device reboots, or you explicitly clear it.
 
 ### ↩️ Clearing Overrides
 The **clear LED** service reverts an overridden LED back to its configured state. For example, if you previously configured a button to red with 50% brightness via device configuration, then used the override service to set it to blue at full brightness, calling clear returns it to the original red at 50% brightness.
@@ -64,21 +64,24 @@ Activates find-me mode: all button LEDs start blinking. Press any physical butto
 
 **Parameters:**
 
-| Parameter | Required | Type | Description |
-|---|---|---|---|
-| `config_entry_id` | | `string` | µGateway to activate find-me mode on. Optional with a single µGateway; required when multiple are configured. |
+| Parameter         | Required | Type     | Description                                                                                                   |
+|-------------------|----------|----------|---------------------------------------------------------------------------------------------------------------|
+| `config_entry_id` |          | `string` | µGateway to activate find-me mode on. Optional with a single µGateway; required when multiple are configured. |
 
 **Response fields:**
 
-| Field | Type | Description |
-|---|---|---|
-| `button_id` | `int \| null` | Wiser button ID, or `null` for unmanaged buttons |
-| `device` | `str \| null` | Internal device ID of the pressed button |
-| `channel` | `int \| null` | Input channel on the device |
-| `room` | `str \| null` | Room name resolved from the device's load assignment |
-| `device_name` | `str \| null` | Human-readable device name |
-| `scene` | `str \| null` | Name of the linked scene, if the button triggers one |
-| `note` | `str \| null` | Set when the button is unmanaged; directs you to the docs |
+| Field         | Type          | Description                                          |
+|---------------|---------------|------------------------------------------------------|
+| `button_id`   | `int \| null` | Wiser button ID of the pressed button                |
+| `device`      | `str \| null` | Internal device ID of the pressed button             |
+| `channel`     | `int \| null` | Input channel on the device                          |
+| `room_name`   | `str \| null` | Room name resolved from the device's load assignment |
+| `device_name` | `str \| null` | Human-readable device name                           |
+| `scene_name`  | `str \| null` | Name of the linked scene, if the button triggers one |
+
+> [!NOTE]
+> Pressing an unmanaged button raises an error instead of returning a response. 
+> `button_id` is only `null` in the rare case where the gateway reports a press it cannot resolve at all.
 
 **Example automation:**
 ```yaml
@@ -91,13 +94,13 @@ Temporarily overrides the LED state of a specific button LED. The override persi
 
 **Parameters:**
 
-| Parameter   | Required | Type        | Description                                                                                                                                                                         |
-|-------------|----------|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `config_entry_id` |    | `string`    | µGateway the button belongs to. Optional with a single µGateway; required when multiple are configured.                                                                            |
-| `button_id` | ✅        | `int`       | Button ID (from `find_button`)                                                                                                                                                      |
-| `led_index` | ✅        | `string`    | For Up/Down-Buttons (dimmers or motor controls), both buttons have the same button ID, so to select the Down-Button you need to select `"1"` here. For all other cases, it's `"1"`. |
-| `rgb_color` | ✅        | `[r, g, b]` | LED color as RGB values (0–255 each)                                                                                                                                                |
-| `effect`    |          | `string`    | Blink pattern (see table below). Defaults to `permanent`                                                                                                                            |
+| Parameter         | Required | Type           | Description                                                                                                                                                                         |
+|-------------------|----------|----------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `config_entry_id` |          | `string`       | µGateway the button belongs to. Optional with a single µGateway; required when multiple are configured.                                                                             |
+| `button_id`       | ✅        | `int`          | Button ID (from `find_button`)                                                                                                                                                      |
+| `led_index`       | ✅        | `"0"` or `"1"` | For Up/Down-Buttons (dimmers or motor controls), both buttons have the same button ID, so to select the down button you need to select `"1"` here. For all other cases, it's `"0"`. |
+| `rgb_color`       | ✅        | `[r, g, b]`    | LED color as RGB values (0–255 each)                                                                                                                                                |
+| `effect`          |          | `string`       | Blink pattern (see table below). Defaults to `permanent`                                                                                                                            |
 
 **Example automation:**
 ```yaml
@@ -114,11 +117,11 @@ Reverts an overridden LED back to its device-configured state (see [⚙️ Devic
 
 **Parameters:**
 
-| Parameter | Required | Type | Description                    |
-|---|---|---|--------------------------------|
-| `config_entry_id` | | `string` | µGateway the button belongs to. Optional with a single µGateway; required when multiple are configured. |
-| `button_id` | ✅ | `int` | Button ID (from `find_button`) |
-| `led_index` | ✅ | `"0"` or `"1"` | Same as in `set_button_led_override`                    |
+| Parameter         | Required | Type           | Description                                                                                             |
+|-------------------|----------|----------------|---------------------------------------------------------------------------------------------------------|
+| `config_entry_id` |          | `string`       | µGateway the button belongs to. Optional with a single µGateway; required when multiple are configured. |
+| `button_id`       | ✅        | `int`          | Button ID (from `find_button`)                                                                          |
+| `led_index`       | ✅        | `"0"` or `"1"` | Same as in `set_button_led_override`                                                                    |
 
 **Example automation:**
 ```yaml
@@ -130,13 +133,13 @@ data:
 
 ### Blink Patterns
 
-| Value | Description |
-|---|---|
-| `permanent` | Steady, always on |
-| `slow` | Slow blink |
-| `fast` | Fast blink |
-| `ramp` | Fade in and out repeatedly |
-| `ramp_up` | Fade in once |
-| `ramp_down` | Fade out once |
+| Value       | Description                |
+|-------------|----------------------------|
+| `permanent` | Steady, always on          |
+| `slow`      | Slow blink                 |
+| `fast`      | Fast blink                 |
+| `ramp`      | Fade in and out repeatedly |
+| `ramp_up`   | Fade in once               |
+| `ramp_down` | Fade out once              |
 
 [^1]: Button IDs are assigned by the Wiser µGateway and are stable across reboots.
