@@ -32,7 +32,13 @@ from homeassistant.exceptions import ConfigEntryAuthFailed, ServiceValidationErr
 from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import DOMAIN, HA_BLUE, LED_OFF_COLOR, OPTIONS_ALLOW_MISSING_GATEWAY_DATA
+from .const import (
+    DOMAIN,
+    EVENT_BUTTON,
+    HA_BLUE,
+    LED_OFF_COLOR,
+    OPTIONS_ALLOW_MISSING_GATEWAY_DATA,
+)
 from .exceptions import UnexpectedGatewayResult
 from .util import resolve_device_name, rgb_tuple_to_hex
 
@@ -489,6 +495,22 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
             _LOGGER.debug(
                 "Websocket westgroup data update received: %s", data["westgroup"]
             )
+        elif "button" in data:
+            # Physical button presses. These don't mutate load state, they're fired on the HA bus for
+            # device triggers and raw event automations to consume.
+            btn = data["button"]
+            _LOGGER.debug("Websocket button event received: %s", btn)
+            if self.config_entry is not None:
+                self.hass.bus.async_fire(
+                    EVENT_BUTTON,
+                    {
+                        "config_entry_id": self.config_entry.entry_id,
+                        "button_id": btn["id"],
+                        "event": btn["cmd"]["event"],
+                        "type": btn["cmd"].get("type"),
+                    },
+                )
+            return  # button events don't update entity state
         else:
             _LOGGER.debug("Unsupported websocket data update received: %s", data)
 

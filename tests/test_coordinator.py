@@ -317,6 +317,29 @@ def test_ws_update_data_hvacgroup_updates_states(coordinator):
     assert coordinator._states[10] == hvac_state
 
 
+def test_ws_update_data_button_fires_bus_event(coordinator):
+    """WebSocket 'button' event is fired on the bus and does not touch state."""
+    coordinator._states = {}
+    coordinator.config_entry = MagicMock(entry_id="abc123")
+    coordinator.hass = MagicMock()
+
+    with patch.object(coordinator, "async_set_updated_data") as mock_update:
+        coordinator.ws_update_data(
+            {"button": {"id": 53, "cmd": {"event": "press", "type": "down"}}}
+        )
+
+    mock_update.assert_not_called()  # button events don't refresh entity state
+    coordinator.hass.bus.async_fire.assert_called_once_with(
+        "wiser_by_feller_button_event",
+        {
+            "config_entry_id": "abc123",
+            "button_id": 53,
+            "event": "press",
+            "type": "down",
+        },
+    )
+
+
 def test_ws_update_data_noop_when_states_none(coordinator):
     """ws_update_data returns early when _states is not yet populated."""
     coordinator._states = None

@@ -25,7 +25,7 @@ If it does not exist yet, you can create it in the home assistant installation d
 
 ## ⚙️ Setup
 > [!WARNING]
-> Please make sure your Wiser setup has been fully configured by your electrition before adding it to Home Assistant. Otherwise naming and categorizing all the devices can be very time consuming and confusing.
+> Please make sure your Wiser setup has been fully configured by your electrician before adding it to Home Assistant. Otherwise, naming and categorizing all the devices can be very time-consuming and confusing.
 
 Home Assistant should ✨automagically✨ discover your µGateway and suggest to set it up. If not, you can follow these steps to connect manually:
 
@@ -37,7 +37,7 @@ Home Assistant should ✨automagically✨ discover your µGateway and suggest to
 5. The buttons on your µGateway should start **flashing purple and pink**. Press one of them within 30 seconds
 
 > [!TIP]
-> In the moment you connect your gateway, all your settings (room and device names, scenes, etc.) are copied over from the user you pick (for a normal install that's either the installer (`installer`, via Wiser eSetup app) or the end user (`admin`, via Wiser Home app).
+> When you connect your gateway, all your settings (room and device names, scenes, etc.) are copied over from the user you pick (for a normal install that's either the installer (`installer`, via Wiser eSetup app) or the end user (`admin`, via Wiser Home app).
 >
 > If you add more scenes with the Wiser eSetup or Wiser Home app, you need to reconnect the user (Note: This is currently under development).
 
@@ -93,6 +93,9 @@ The integration listens to state changes via a Websocket, leading to near-instan
 
 ### 🚨 Status LEDs
 Wiser by Feller devices have customizable status LEDs that can indicate load states or system status. The integration supports two ways to control these LEDs. For detailed information on both methods, including examples and advanced features, see the [LED Control documentation](docs/led-control.md).
+
+### 🎛️ Button Events
+Physical button presses fire a Home Assistant event you can use in automations (click, long press, release). For detailed information, see the [Button Events documentation](docs/button-triggers.md).
 
 ### 🕹️ System Flag
 Already configured system flags appear as switches in Home Assistant. Unfortunately currently there is no way to configure them other than via API. An integrated management of flags is planned (See #20).

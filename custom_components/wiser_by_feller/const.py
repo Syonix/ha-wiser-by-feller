@@ -11,3 +11,5 @@ IMPORT_USER_UNKNOWN = "<unknown>"
 OPTIONS_ALLOW_MISSING_GATEWAY_DATA = "allow_missing_gateway_data"
 HA_BLUE = "#1abcf2"
 LED_OFF_COLOR = "#000000"
+
+EVENT_BUTTON = f"{DOMAIN}_button_event"

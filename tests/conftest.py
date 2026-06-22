@@ -141,6 +141,7 @@ def mock_coordinator(mock_config_entry, mock_gateway):
     coord.scenes = {}
     coord.jobs = {}
     coord.sensors = {}
+    coord.managed_buttons = {}
     coord.hvac_groups = {}
     coord.system_flags = []
     coord.system_health = MOCK_SYSTEM_HEALTH
