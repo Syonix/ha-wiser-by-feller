@@ -30,7 +30,10 @@ Before you can override an LED, you need to find the button ID:
 3. If the button is already configured (a *managed* button), the service returns the button ID along with additional information about it.
 
 > [!NOTE]
-> If you press a button that is not yet configured, the service does not return a button ID and directs you to the documentation instead. See [Configuring Buttons in the Wiser Gateway](#-configuring-buttons-in-the-wiser-gateway) below.
+> Button IDs are only unique per µGateway. If you have more than one µGateway configured, you must select which one a service call targets via the **µGateway** field (`config_entry_id`). With a single µGateway the field is optional and that gateway is used automatically.
+
+> [!NOTE]
+> If you press a button that is not yet configured, the service does not return a button ID and directs you to the documentation instead. See [Configuring Buttons in the Wiser Gateway](#️-configuring-buttons-in-the-wiser-gateway) below.
 
 ### 🎨 Overriding LEDs
 Once you have a button ID, use the **override LED** service to set the LED state. You specify the button ID, the color as RGB values, and a blink pattern.
@@ -55,7 +58,11 @@ The **clear LED** service reverts an overridden LED back to its configured state
 ### `wiser_by_feller.find_button`
 Activates find-me mode: all button LEDs start blinking. Press any physical button to identify it. The service blocks until a button is pressed or the 2-minute timeout expires.
 
-**Parameters:** none
+**Parameters:**
+
+| Parameter | Required | Type | Description |
+|---|---|---|---|
+| `config_entry_id` | | `string` | µGateway to activate find-me mode on. Optional with a single µGateway; required when multiple are configured. |
 
 **Response fields:**
 
@@ -82,6 +89,7 @@ Temporarily overrides the LED state of a specific button LED. The override persi
 
 | Parameter   | Required | Type        | Description                                                                                                                                                                         |
 |-------------|----------|-------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `config_entry_id` |    | `string`    | µGateway the button belongs to. Optional with a single µGateway; required when multiple are configured.                                                                            |
 | `button_id` | ✅        | `int`       | Button ID (from `find_button`)                                                                                                                                                      |
 | `led_index` | ✅        | `string`    | For Up/Down-Buttons (dimmers or motor controls), both buttons have the same button ID, so to select the Down-Button you need to select `"1"` here. For all other cases, it's `"1"`. |
 | `rgb_color` | ✅        | `[r, g, b]` | LED color as RGB values (0–255 each)                                                                                                                                                |
@@ -104,6 +112,7 @@ Reverts an overridden LED back to its device-configured state (see [⚙️ Devic
 
 | Parameter | Required | Type | Description                    |
 |---|---|---|--------------------------------|
+| `config_entry_id` | | `string` | µGateway the button belongs to. Optional with a single µGateway; required when multiple are configured. |
 | `button_id` | ✅ | `int` | Button ID (from `find_button`) |
 | `led_index` | ✅ | `"0"` or `"1"` | Same as in `set_button_led_override`                    |
 
