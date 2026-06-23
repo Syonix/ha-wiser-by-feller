@@ -20,6 +20,10 @@ Secondary controls without loads mirror the LED state of their primary device. S
 > You can assign a system flag to a scene button to give it an on or off state for the LED. This is an advanced feature that requires knowledge of the Wiser ecosystem and API. A more convenient integration of this is planned for a future release (see [#20](https://github.com/Syonix/ha-wiser-by-feller/issues/20)).
 
 ## 🕐 Temporary Override
+
+> [!NOTE]
+> Requires µGateway firmware **≥ 6.0.41**.
+
 The second method directly overrides LED states without modifying device configuration. Instead of targeting a Wiser device, it targets a **button ID**, which lets you address specific buttons anywhere in the system, independent of device associations[^1].
 
 ### 🔍 Discovering Button IDs
