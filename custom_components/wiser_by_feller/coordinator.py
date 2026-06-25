@@ -37,6 +37,7 @@ from .const import (
     EVENT_BUTTON,
     HA_BLUE,
     LED_OFF_COLOR,
+    MIN_FIRMWARE_MANAGED_BUTTONS,
     OPTIONS_ALLOW_MISSING_GATEWAY_DATA,
 )
 from .exceptions import UnexpectedGatewayResult
@@ -174,6 +175,21 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
         return (
             int(self.gateway_info["api"][:1]) if self.gateway_info is not None else None
         )
+
+    @property
+    def gateway_firmware_version(self) -> tuple[int, ...] | None:
+        """Parsed firmware version tuple, e.g. (6, 0, 41)."""
+        if self.gateway_info is None:
+            return None
+        try:
+            return tuple(int(x) for x in self.gateway_info["sw"].split("."))
+        except (KeyError, ValueError):
+            return None
+
+    def supports_feature(self, min_firmware: tuple[int, ...]) -> bool:
+        """Return True if gateway firmware meets the minimum version requirement."""
+        v = self.gateway_firmware_version
+        return v is not None and v >= min_firmware
 
     @property
     def is_gen_b(self) -> bool:
@@ -407,15 +423,13 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
                     await self.async_update_hvac_groups()
 
             if self._managed_buttons is None:
-                try:
-                    async with asyncio.timeout(10):
-                        await self.async_update_managed_buttons()
-                except Exception as err:  # noqa: BLE001
-                    _LOGGER.warning(
-                        "Failed to load managed buttons, find_button service will not resolve labels. Fix this by updating your µGateway. (Error: %s)",
-                        err,
-                    )
-                    self._managed_buttons = {}
+                self._managed_buttons = {}
+                if self.supports_feature(MIN_FIRMWARE_MANAGED_BUTTONS):
+                    try:
+                        async with asyncio.timeout(10):
+                            await self.async_update_managed_buttons()
+                    except Exception as err:  # noqa: BLE001
+                        _LOGGER.warning("Failed to load managed buttons: %s", err)
 
             async with asyncio.timeout(10):
                 await self.async_update_states()
