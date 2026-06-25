@@ -192,6 +192,9 @@
     },
     "unmanaged_button": {
       "message": "This button is unmanaged. See the LED Control documentation for more information: https://github.com/Syonix/ha-wiser-by-feller/blob/main/docs/led-control.md"
+    },
+    "firmware_too_old": {
+      "message": "This feature requires µGateway firmware {min_version} or newer. Your gateway is running {current_version}."
     }
   },
   "services": {

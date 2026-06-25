@@ -25,6 +25,7 @@ from .const import (
     IMPORT_USER_UNKNOWN,
     LED_OFF_COLOR,
     MANUFACTURER,
+    MIN_FIRMWARE_BUTTON_LED_OVERRIDE,
 )
 from .coordinator import WiserCoordinator
 
@@ -93,6 +94,26 @@ FIND_BUTTON_SCHEMA = vol.Schema(
         vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
     }
 )
+
+
+def _require_firmware(
+    coordinator: WiserCoordinator,
+    min_firmware: tuple[int, ...],
+) -> None:
+    """Raise ServiceValidationError if the gateway firmware is too old."""
+    if not coordinator.supports_feature(min_firmware):
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="firmware_too_old",
+            translation_placeholders={
+                "min_version": ".".join(str(x) for x in min_firmware),
+                "current_version": (
+                    coordinator.gateway_info["sw"]
+                    if coordinator.gateway_info
+                    else "unknown"
+                ),
+            },
+        )
 
 
 def _resolve_coordinator(
@@ -165,6 +186,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async def async_set_button_led_override(call: ServiceCall) -> None:
         """Set button LED override."""
         coordinator = _resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
+        _require_firmware(coordinator, MIN_FIRMWARE_BUTTON_LED_OVERRIDE)
         try:
             await coordinator.api.async_set_button_led(
                 button_id=call.data[ATTR_BUTTON_ID],
@@ -179,6 +201,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async def async_clear_button_led_override(call: ServiceCall) -> None:
         """Clear button LED override."""
         coordinator = _resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
+        _require_firmware(coordinator, MIN_FIRMWARE_BUTTON_LED_OVERRIDE)
         try:
             await coordinator.api.async_set_button_led(
                 button_id=call.data[ATTR_BUTTON_ID],
@@ -193,6 +216,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     async def async_find_button_service(call: ServiceCall) -> dict[str, Any]:
         """Find a physical button by activating find-me mode."""
         coordinator = _resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
+        _require_firmware(coordinator, MIN_FIRMWARE_BUTTON_LED_OVERRIDE)
         result = await coordinator.async_find_button()
 
         button_id = result.get("button_id")
