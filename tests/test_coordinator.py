@@ -12,12 +12,17 @@ from aiowiserbyfeller import (
     UnsuccessfulRequest,
 )
 from aiowiserbyfeller.const import LOAD_SUBTYPE_ONOFF_DTO, LOAD_TYPE_ONOFF
-from homeassistant.exceptions import ConfigEntryAuthFailed
+import aiowiserbyfeller.errors
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError
 from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 
-from custom_components.wiser_by_feller.const import DOMAIN
+from custom_components.wiser_by_feller.const import (
+    DOMAIN,
+    OPTIONS_ALLOW_MISSING_GATEWAY_DATA,
+)
 from custom_components.wiser_by_feller.coordinator import WiserCoordinator
+from custom_components.wiser_by_feller.exceptions import UnexpectedGatewayResult
 
 MOCK_HOST = "192.168.1.100"
 MOCK_TOKEN = "61b096f3-9f20-46db-932c-c8bbf7f6011d"
@@ -574,3 +579,174 @@ async def test_set_status_light_with_color_off_sets_color_keys(coordinator, mock
     assert data["color"] == "#1abcf2"
     assert data["foreground_color"] == "#1abcf2"
     assert data["background_color"] == "#000000"
+
+
+# ── validate_device_data / missing data repair issues ────────────────────────
+
+
+def _make_device_with_id(device_id="00254a0"):
+    """Create a minimal Device mock with a given id."""
+    device = MagicMock()
+    device.id = device_id
+    device.combined_serial_number = f"SN-{device_id}"
+    return device
+
+
+def test_validate_device_data_creates_issue_on_validation_failure(coordinator, hass):
+    """When Device.validate_data() raises, a fixable HA issue is created."""
+    device = _make_device_with_id("00254a0")
+    device.validate_data.side_effect = (
+        aiowiserbyfeller.errors.UnexpectedGatewayResponse("serial_nr missing")
+    )
+
+    with patch(
+        "custom_components.wiser_by_feller.coordinator.ir.async_create_issue"
+    ) as mock_create:
+        with pytest.raises(UnexpectedGatewayResult):
+            coordinator.validate_device_data(device)
+
+        mock_create.assert_called_once()
+        kwargs = mock_create.call_args.kwargs
+        assert kwargs["is_fixable"] is True
+        assert mock_create.call_args.args[2] == "missing_device_data_00254a0"
+        assert kwargs["data"]["device_id"] == "00254a0"
+
+
+@pytest.mark.parametrize(
+    ("sw", "expected"),
+    [("6.0.41", True), ("6.0.40", True), ("6.0.39", False), ("5.1.31-0", False)],
+)
+def test_validate_device_data_issue_can_auto_fix_by_firmware(
+    coordinator, hass, sw, expected
+):
+    """can_auto_fix in the issue data reflects the 6.0.40 firmware gate."""
+    coordinator._gateway_info = {"api": "6.0", "sw": sw}
+    device = _make_device_with_id("00254a0")
+    device.validate_data.side_effect = (
+        aiowiserbyfeller.errors.UnexpectedGatewayResponse("missing")
+    )
+
+    with patch(
+        "custom_components.wiser_by_feller.coordinator.ir.async_create_issue"
+    ) as mock_create:
+        with pytest.raises(UnexpectedGatewayResult):
+            coordinator.validate_device_data(device)
+
+        assert mock_create.call_args.kwargs["data"]["can_auto_fix"] is expected
+
+
+def test_validate_device_data_issue_contains_correct_domain(coordinator, hass):
+    """The repair issue is filed under the DOMAIN constant."""
+    device = _make_device_with_id("abc")
+    device.validate_data.side_effect = (
+        aiowiserbyfeller.errors.UnexpectedGatewayResponse("missing")
+    )
+
+    with patch(
+        "custom_components.wiser_by_feller.coordinator.ir.async_create_issue"
+    ) as mock_create:
+        with pytest.raises(UnexpectedGatewayResult):
+            coordinator.validate_device_data(device)
+
+        assert mock_create.call_args.args[1] == DOMAIN
+
+
+def test_validate_device_data_no_issue_on_success(coordinator, hass):
+    """No issue is created when Device.validate_data() passes."""
+    device = _make_device_with_id()
+    device.validate_data.return_value = None  # no exception
+
+    with patch(
+        "custom_components.wiser_by_feller.coordinator.ir.async_create_issue"
+    ) as mock_create:
+        coordinator.validate_device_data(device)
+        mock_create.assert_not_called()
+
+
+def test_validate_device_data_skipped_when_option_enabled(coordinator, hass):
+    """validate_device_data is a no-op when allow_missing_gateway_data is True."""
+    coordinator._options = {OPTIONS_ALLOW_MISSING_GATEWAY_DATA: True}
+    device = _make_device_with_id()
+    device.validate_data.side_effect = (
+        aiowiserbyfeller.errors.UnexpectedGatewayResponse("missing")
+    )
+
+    with patch(
+        "custom_components.wiser_by_feller.coordinator.ir.async_create_issue"
+    ) as mock_create:
+        coordinator.validate_device_data(device)  # must not raise
+        mock_create.assert_not_called()
+
+
+async def test_update_data_raises_config_entry_error_on_missing_device_data(
+    coordinator, mock_api, hass
+):
+    """UnexpectedGatewayResult from device validation is converted to ConfigEntryError."""
+    bad_device = _make_device_with_id("bad1")
+    bad_device.validate_data.side_effect = (
+        aiowiserbyfeller.errors.UnexpectedGatewayResponse("serial_nr missing")
+    )
+    mock_api.async_get_devices_detail.return_value = [bad_device]
+
+    with (
+        patch("custom_components.wiser_by_feller.coordinator.ir.async_create_issue"),
+        patch("custom_components.wiser_by_feller.coordinator.ir.async_delete_issue"),
+        pytest.raises(ConfigEntryError),
+    ):
+        await coordinator._async_update_data()
+
+
+async def test_update_devices_collects_all_issues_before_raising(
+    coordinator, mock_api, hass
+):
+    """All devices are processed before raising; issues are created for every failing one."""
+    bad1 = _make_device_with_id("bad1")
+    bad1.validate_data.side_effect = aiowiserbyfeller.errors.UnexpectedGatewayResponse(
+        "missing"
+    )
+    bad2 = _make_device_with_id("bad2")
+    bad2.validate_data.side_effect = aiowiserbyfeller.errors.UnexpectedGatewayResponse(
+        "missing"
+    )
+    mock_api.async_get_devices_detail.return_value = [bad1, bad2]
+
+    created_ids = []
+    with (
+        patch(
+            "custom_components.wiser_by_feller.coordinator.ir.async_create_issue",
+            side_effect=lambda hass, domain, issue_id, **kw: created_ids.append(
+                issue_id
+            ),
+        ),
+        patch("custom_components.wiser_by_feller.coordinator.ir.async_delete_issue"),
+        pytest.raises(UnexpectedGatewayResult),
+    ):
+        await coordinator.async_update_devices()
+
+    assert "missing_device_data_bad1" in created_ids
+    assert "missing_device_data_bad2" in created_ids
+
+
+async def test_update_devices_deletes_issue_for_valid_device(
+    coordinator, mock_api, hass
+):
+    """On reload after a fix, valid devices clean up their stale repair issues."""
+    good = _make_device_with_id("good1")
+    good.validate_data.return_value = None
+    good.c = {"comm_ref": "ABC"}
+    mock_api.async_get_devices_detail.return_value = [good]
+
+    with (
+        patch(
+            "custom_components.wiser_by_feller.coordinator.parse_wiser_device_ref_c",
+            return_value={"wlan": False},
+        ),
+        patch(
+            "custom_components.wiser_by_feller.coordinator.ir.async_delete_issue"
+        ) as mock_delete,
+        patch("custom_components.wiser_by_feller.coordinator.ir.async_create_issue"),
+    ):
+        await coordinator.async_update_devices()
+
+    deleted_ids = [call.args[2] for call in mock_delete.call_args_list]
+    assert "missing_device_data_good1" in deleted_ids

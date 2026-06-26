@@ -159,6 +159,39 @@
     }
   },
   "issues": {
+    "missing_device_data": {
+      "title": "Incomplete device data for device {device_id}",
+      "description": "The µGateway returned incomplete data for device **{device_id}** (missing fields like serial number or firmware version). This can cause non-unique device identifiers and has been documented in [Feller-AG/wiser-api#43](https://github.com/Feller-AG/wiser-api/issues/43). The integration has been paused to prevent data corruption.\n\nOpen this repair to resolve it.",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Incomplete device data",
+            "description": "The µGateway returned incomplete data for device **{device_id}** (missing fields like serial number or firmware version). This can cause non-unique device identifiers and has been documented in [Feller-AG/wiser-api#43](https://github.com/Feller-AG/wiser-api/issues/43). The integration has been paused to prevent data corruption.\n\nThe fix asks the µGateway to re-read the device and then reloads the integration. Click **Next** to review the fix, or close this dialog to do nothing.",
+            "submit": "Next"
+          },
+          "confirm": {
+            "title": "Refresh device data",
+            "description": "Click **Fix** to request a property refresh for device **{device_id}** from the µGateway. This can take a few seconds. The integration will reload automatically if the refresh succeeds.\n\nIf this fix does not work (e.g. with pre-production devices), you can enable the **Allow missing µGateway data** option in the integration settings to bypass this check. This can have unintended side-effects, so only do this if you know what you are doing.",
+            "submit": "Fix"
+          },
+          "reload": {
+            "title": "Incomplete device data",
+            "description": "The µGateway returned incomplete data for device **{device_id}** (missing fields like serial number or firmware version), which can cause non-unique device identifiers. See [issue #48](https://github.com/Syonix/ha-wiser-by-feller/issues/48) and [Feller-AG/wiser-api#43](https://github.com/Feller-AG/wiser-api/issues/43) for details.\n\nYour µGateway firmware is older than **6.0.40**, so the integration cannot trigger an automatic data refresh. To resolve this, try one of the following:\n\n- **Update the µGateway firmware** to 6.0.40 or newer, then reopen this repair to use the automatic fix.\n- **Power-cycle the affected device** so the µGateway re-reads its data.\n- Enable **Allow missing µGateway data** in the integration settings to bypass this check (only if you know what you are doing).\n\nAfter trying one of the above, click **Reload** to reload the integration and re-check the device data.",
+            "submit": "Reload"
+          }
+        },
+        "error": {
+          "refresh_failed": "The µGateway did not accept the refresh request. Please try again or check µGateway connectivity.",
+          "reload_failed": "The refresh request was sent, but the µGateway still reports incomplete data. The issue may have reappeared. Please try again or check the µGateway.",
+          "reload_failed_legacy": "The device data is still incomplete after reloading. Update the µGateway firmware to 6.0.40 or newer, power-cycle the affected device, or enable the \"Allow missing µGateway data\" option in the integration settings."
+        },
+        "abort": {
+          "missing_data": "Repair metadata is incomplete — cannot determine which device to fix.",
+          "entry_not_found": "The µGateway configuration entry was not found.",
+          "no_coordinator": "The µGateway coordinator is not available."
+        }
+      }
+    },
     "unknown_load_type": {
       "title": "Unknown load type \"{item_type}\" on load {item_id}",
       "description": "Load \"{item_name}\" (ID: {item_id}) has an unknown type \"{item_type}\" and is not supported by this integration. It will be ignored until support is added.\n\nIf you are using pre-production devices, please report this load type to the integration maintainers so it can be added."
