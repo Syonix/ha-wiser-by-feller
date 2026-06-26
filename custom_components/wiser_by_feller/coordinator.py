@@ -257,6 +257,10 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
             ),
         }
 
+        if "color_off" in call.data:
+            data["foreground_color"] = data["color"]
+            data["background_color"] = rgb_tuple_to_hex(tuple(call.data["color_off"]))
+
         try:
             config = await self._api.async_get_device_config(wdevice)
             await self._api.async_set_device_input_config(config["id"], channel, data)
