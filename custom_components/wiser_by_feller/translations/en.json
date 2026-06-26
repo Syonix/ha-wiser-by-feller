@@ -210,17 +210,21 @@
           "name": "Color",
           "description": "The RGB color to display on the status light."
         },
+        "color_off": {
+          "name": "Color when off",
+          "description": "The RGB color to display on the status light when the load is turned off. When unchecked, the \"Color\" value is used."
+        },
         "channel": {
           "name": "Channel",
           "description": "The specific button on the device to control."
         },
         "brightness_on": {
           "name": "Brightness when on",
-          "description": "Button illumination brightness level when the load is turned on (0–255)."
+          "description": "Button illumination brightness level when the load is turned on (0–100)."
         },
         "brightness_off": {
           "name": "Brightness when off",
-          "description": "Button illumination brightness level when the load is turned off (0–255). When unchecked, the \"Brightness when on\" value is used."
+          "description": "Button illumination brightness level when the load is turned off (0–100). When unchecked, the \"Brightness when on\" value is used."
         }
       }
     },

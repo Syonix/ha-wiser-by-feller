@@ -15,6 +15,10 @@ status_light:
         - 242
       selector:
         color_rgb:
+    color_off:
+      required: false
+      selector:
+        color_rgb:
     channel:
       required: true
       default: "0"
@@ -24,17 +28,17 @@ status_light:
           options: ["0", "1", "2", "3"]
     brightness_on:
       required: true
-      default: 255
+      default: 100
       selector:
         number:
           min: 0
-          max: 255
+          max: 100
     brightness_off:
       required: false
       selector:
         number:
           min: 0
-          max: 255
+          max: 100
 
 set_button_led_override:
   name: Set Button LED Override

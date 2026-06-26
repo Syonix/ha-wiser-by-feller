@@ -12,7 +12,9 @@ Wiser by Feller devices have customizable status LEDs that can indicate load sta
 | **Purpose**              | To represent load state (e.g. show if the light is on) or use as orientation light in the dark | Use in HA automations (e.g. notifications, show air quality, etc.) |
 
 ## ⚙️ Device Configuration
-The first method modifies the LED configuration directly on the device. This is the same configuration available in the Wiser apps (Frontset-Eigenschaften). You set a color and brightness levels for when the load is on and when it is off, and the device automatically switches the LEDs based on the actual load state.
+The first method modifies the LED configuration directly on the device, via the **configure status light** service (`wiser_by_feller.status_light`). This is the same configuration available in the Wiser apps (Frontset-Eigenschaften). You set a color and brightness levels for when the load is on and when it is off, and the device automatically switches the LEDs based on the actual load state.
+
+By default, the same color is used for both states and only the brightness differs. You can optionally set a separate **color when off** (`color_off`) to use a different color while the load is off; when it is left unset, the on-state color is used for both states.
 
 Secondary controls without loads mirror the LED state of their primary device. Scene buttons do not have an inherent on or off state, since scenes are triggered rather than toggled.
 
@@ -58,6 +60,32 @@ The **clear LED** service reverts an overridden LED back to its configured state
 7. Press the `ℹ️ Show Button Info` or refer to the [Feller Wiser Tutorial](https://github.com/Feller-AG/wiser-tutorial) for more information.
 
 ## 📋 Service Reference
+
+### `wiser_by_feller.status_light`
+Configures the device's status LED for a channel (see [⚙️ Device Configuration](#️-device-configuration)). The setting is persisted on the device, and the device switches the LED automatically based on the load state.
+
+**Parameters:**
+
+| Parameter       | Required | Type        | Description                                                                                                              |
+|-----------------|----------|-------------|--------------------------------------------------------------------------------------------------------------------------|
+| `device`        | ✅        | `string`    | The target device (load, or scene / secondary control unit).                                                             |
+| `channel`       | ✅        | `"0"`–`"3"` | The button on the device to control.                                                                                     |
+| `color`         | ✅        | `[r, g, b]` | LED color as RGB values (0–255 each). Used while the load is on, and also while off unless `color_off` is set.            |
+| `color_off`     |          | `[r, g, b]` | LED color while the load is off. When unset, `color` is used for both states.                                            |
+| `brightness_on` | ✅        | `int`       | LED brightness while the load is on (0–100).                                                                             |
+| `brightness_off`|          | `int`       | LED brightness while the load is off (0–100). When unset, `brightness_on` is used.                                       |
+
+**Example automation:**
+```yaml
+action: wiser_by_feller.status_light
+data:
+  device: 000004d7
+  channel: "0"
+  color: [26, 188, 242]
+  color_off: [0, 0, 0]
+  brightness_on: 100
+  brightness_off: 15
+```
 
 ### `wiser_by_feller.find_button`
 Activates find-me mode: all button LEDs start blinking. Press any physical button to identify it. The service blocks until a button is pressed or the 2-minute timeout expires.

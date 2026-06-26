@@ -513,3 +513,64 @@ async def test_ws_idle_recovery_logs_info(coordinator, mock_api, caplog):
 
     assert coordinator._ws_was_idle is False
     assert any("re-established" in r.message.lower() for r in caplog.records)
+
+
+# ── status light ──────────────────────────────────────────────────────────────
+
+
+def _status_light_call(**overrides):
+    """Build a ServiceCall-like stub for async_set_status_light."""
+    data = {
+        "device": "000004d7",
+        "channel": "0",
+        "color": [26, 188, 242],
+        "brightness_on": 100,
+    }
+    data.update(overrides)
+    call = MagicMock()
+    call.data = data
+    return call
+
+
+def _prepare_status_light(coordinator, mock_api):
+    """Wire up the device lookups async_set_status_light needs."""
+    device = MagicMock()
+    device.serial_number = "20012161"
+    coordinator._device_ids_by_serial = {"20012161": "wiser-device-1"}
+    coordinator._devices = {"wiser-device-1": MagicMock(inputs=[0, 1, 2, 3])}
+    mock_api.async_get_device_config = AsyncMock(return_value={"id": "config-7"})
+    mock_api.async_set_device_input_config = AsyncMock()
+    mock_api.async_apply_device_config = AsyncMock()
+    return device
+
+
+async def test_set_status_light_without_color_off_omits_color_keys(
+    coordinator, mock_api
+):
+    """Without color_off, only `color` is sent (no foreground/background color)."""
+    device = _prepare_status_light(coordinator, mock_api)
+
+    with patch("custom_components.wiser_by_feller.coordinator.dr.async_get") as mock_dr:
+        mock_dr.return_value.async_get.return_value = device
+        await coordinator.async_set_status_light(_status_light_call())
+
+    _, _, data = mock_api.async_set_device_input_config.call_args.args
+    assert data["color"] == "#1abcf2"
+    assert "foreground_color" not in data
+    assert "background_color" not in data
+
+
+async def test_set_status_light_with_color_off_sets_color_keys(coordinator, mock_api):
+    """With color_off, foreground/background colors are sent and `color` stays foreground."""
+    device = _prepare_status_light(coordinator, mock_api)
+
+    with patch("custom_components.wiser_by_feller.coordinator.dr.async_get") as mock_dr:
+        mock_dr.return_value.async_get.return_value = device
+        await coordinator.async_set_status_light(
+            _status_light_call(color_off=[0, 0, 0])
+        )
+
+    _, _, data = mock_api.async_set_device_input_config.call_args.args
+    assert data["color"] == "#1abcf2"
+    assert data["foreground_color"] == "#1abcf2"
+    assert data["background_color"] == "#000000"
