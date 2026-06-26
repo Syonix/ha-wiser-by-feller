@@ -28,7 +28,11 @@ from aiowiserbyfeller.enum import BlinkPattern
 import aiowiserbyfeller.errors
 from aiowiserbyfeller.util import parse_wiser_device_ref_c
 from homeassistant.core import ServiceCall
-from homeassistant.exceptions import ConfigEntryAuthFailed, ServiceValidationError
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    ConfigEntryError,
+    ServiceValidationError,
+)
 from homeassistant.helpers import device_registry as dr, issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -38,6 +42,7 @@ from .const import (
     HA_BLUE,
     LED_OFF_COLOR,
     MIN_FIRMWARE_MANAGED_BUTTONS,
+    MIN_FIRMWARE_REFRESH_PROPERTIES,
     OPTIONS_ALLOW_MISSING_GATEWAY_DATA,
 )
 from .exceptions import UnexpectedGatewayResult
@@ -178,11 +183,16 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
 
     @property
     def gateway_firmware_version(self) -> tuple[int, ...] | None:
-        """Parsed firmware version tuple, e.g. (6, 0, 41)."""
+        """Parsed firmware version tuple, e.g. (6, 0, 41).
+
+        Firmware strings may carry a build suffix, e.g. "6.0.42-0"; the suffix is
+        stripped before parsing so only the dotted version components remain.
+        """
         if self.gateway_info is None:
             return None
         try:
-            return tuple(int(x) for x in self.gateway_info["sw"].split("."))
+            version = self.gateway_info["sw"].split("-", 1)[0]
+            return tuple(int(x) for x in version.split("."))
         except (KeyError, ValueError):
             return None
 
@@ -465,6 +475,8 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
             raise ConfigEntryAuthFailed from err
         except UnsuccessfulRequest as err:
             raise UpdateFailed(f"Error communicating with API: {err}") from err
+        except UnexpectedGatewayResult as err:
+            raise ConfigEntryError from err
 
     async def ws_close(self) -> None:
         """Close the WebSocket connection if it exists."""
@@ -518,14 +530,20 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
             # device triggers and raw event automations to consume.
             btn = data["button"]
             _LOGGER.debug("Websocket button event received: %s", btn)
+            cmd = btn.get("cmd") or {}
+            button_id = btn.get("id")
+            event = cmd.get("event")
+            if button_id is None or event is None:
+                _LOGGER.debug("Ignoring incomplete button event: %s", btn)
+                return
             if self.config_entry is not None:
                 self.hass.bus.async_fire(
                     EVENT_BUTTON,
                     {
                         "config_entry_id": self.config_entry.entry_id,
-                        "button_id": btn["id"],
-                        "event": btn["cmd"]["event"],
-                        "type": btn["cmd"].get("type"),
+                        "button_id": button_id,
+                        "event": event,
+                        "type": cmd.get("type"),
                     },
                 )
             return  # button events don't update entity state
@@ -545,12 +563,23 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
         """Update Wiser devices from µGateway."""
         result = {}
         serials = {}
+        gateway = self._gateway
+        validation_failed = False
 
         _LOGGER.debug(
             "Attempting to update detailed device information from µGateway..."
         )
         for device in await self._api.async_get_devices_detail():
-            self.validate_device_data(device)
+            try:
+                self.validate_device_data(device)
+            except UnexpectedGatewayResult:
+                validation_failed = True
+                continue  # issue already created; process remaining devices
+
+            ir.async_delete_issue(
+                self.hass, DOMAIN, f"missing_device_data_{device.id or 'unknown'}"
+            )
+
             result[device.id] = device
             serials[device.combined_serial_number] = device.id
 
@@ -558,23 +587,33 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
 
             if (
                 info["wlan"]
-                and self.gateway is not None
-                and self.gateway.combined_serial_number != device.combined_serial_number
+                and gateway is not None
+                and gateway.combined_serial_number != device.combined_serial_number
             ):
                 raise UnexpectedGatewayResult(
                     translation_domain=DOMAIN,
                     translation_key="multiple_wlan_devices",
                     translation_placeholders={
-                        "first": self.gateway.combined_serial_number,
+                        "first": gateway.combined_serial_number,
                         "second": device.combined_serial_number,
                     },
                 )
 
             if info["wlan"]:
-                self._gateway = device
+                gateway = device
+
+        if validation_failed:
+            raise UnexpectedGatewayResult(
+                translation_domain=DOMAIN,
+                translation_key="unexpected_gateway_result",
+                translation_placeholders={
+                    "error": "Incomplete device data — see the Repairs panel."
+                },
+            )
 
         self._devices = result
         self._device_ids_by_serial = serials
+        self._gateway = gateway
 
     def validate_device_data(self, device: Device):
         """Validate API response for critical object keys."""
@@ -584,6 +623,23 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
         try:
             device.validate_data()
         except aiowiserbyfeller.errors.UnexpectedGatewayResponse as e:
+            device_id = device.id or "unknown"
+            entry_id = self.config_entry.entry_id if self.config_entry else None
+            can_auto_fix = self.supports_feature(MIN_FIRMWARE_REFRESH_PROPERTIES)
+            ir.async_create_issue(
+                self.hass,
+                DOMAIN,
+                f"missing_device_data_{device_id}",
+                is_fixable=True,
+                severity=ir.IssueSeverity.ERROR,
+                translation_key="missing_device_data",
+                translation_placeholders={"device_id": device_id},
+                data={
+                    "entry_id": entry_id,
+                    "device_id": device_id,
+                    "can_auto_fix": can_auto_fix,
+                },
+            )
             raise UnexpectedGatewayResult(
                 translation_domain=DOMAIN,
                 translation_key="unexpected_gateway_result",

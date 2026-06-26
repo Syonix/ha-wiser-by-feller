@@ -110,12 +110,12 @@ Here's a couple of things that are on the roadmap for future releases:
 
 ## 🛟 Frequently asked questions
 ### Setup error `Invalid API response: Device 00012345 has an empty field c.comm_ref!`
-This is a known bug in the Wiser µGateway firmware. Please refer to issue #48 and
-https://github.com/Feller-AG/wiser-api/issues/43 to resolve the issue.
+This is a known bug in the Wiser µGateway firmware. The integration will now offer to fix the issue with one click (requires µGateway firmware version 6.0.40 or newer).
+Refer to issue [#48](https://github.com/Syonix/ha-wiser-by-feller/issues/48) and [Feller-AG/wiser-api#43](https://github.com/Feller-AG/wiser-api/issues/43) for more in-depth information.
 
 ### Setup error `The API returned the error 'no site info'.`
-This happens, if your Wiser system has not been finalized by an electrician / installer.
-This includes naming all the loads, setting up rooms, assigning loads to rooms, etc.
+This happens if your Wiser system has not been finalized by an electrician / installer.
+This process includes naming all the loads, setting up rooms, assigning loads to rooms, etc.
 To resolve this, please ask your electrician / installer to finalize the setup using the [Wiser eSetup app](https://www.feller.ch/de/feller-apps),
 or refer to https://github.com/Feller-AG/wiser-api/issues/49 for more information on using the API to finalize the system.
 
