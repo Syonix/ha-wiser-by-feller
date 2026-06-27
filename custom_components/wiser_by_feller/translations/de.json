@@ -228,6 +228,9 @@
     },
     "firmware_too_old": {
       "message": "Diese Funktion erfordert µGateway-Firmware {min_version} oder neuer. Dein Gateway läuft mit {current_version}."
+    },
+    "device_firmware_too_old": {
+      "message": "Das µGateway hat die Anfrage akzeptiert, aber die Firmware des Taster-Gerätes ist zu alt für die temporäre LED-Beleuchtung. Das ist die Firmware des Tasters bzw. der Bedienaufsatz-Einheit selbst, nicht die des µGateways. Aktualisiere das betroffene Gerät mit der Wiser Home oder eSetup App und versuche es erneut."
     }
   },
   "services": {

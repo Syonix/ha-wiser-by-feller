@@ -116,6 +116,16 @@ def _require_firmware(
         )
 
 
+def _raise_button_led_error(err: UnsuccessfulRequest) -> None:
+    """Translate a gateway error from a button LED request into a clear message."""
+    if "fw-version too old" in str(err).lower():
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="device_firmware_too_old",
+        ) from err
+    raise ServiceValidationError(str(err)) from err
+
+
 def _resolve_coordinator(
     hass: HomeAssistant, entry_id: str | None = None
 ) -> WiserCoordinator:
@@ -196,7 +206,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 color=rgb_tuple_to_hex(call.data[ATTR_RGB_COLOR]),
             )
         except UnsuccessfulRequest as err:
-            raise ServiceValidationError(str(err)) from err
+            _raise_button_led_error(err)
 
     async def async_clear_button_led_override(call: ServiceCall) -> None:
         """Clear button LED override."""
@@ -211,7 +221,7 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
                 color=LED_OFF_COLOR,
             )
         except UnsuccessfulRequest as err:
-            raise ServiceValidationError(str(err)) from err
+            _raise_button_led_error(err)
 
     async def async_find_button_service(call: ServiceCall) -> dict[str, Any]:
         """Find a physical button by activating find-me mode."""

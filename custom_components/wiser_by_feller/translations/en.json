@@ -228,6 +228,9 @@
     },
     "firmware_too_old": {
       "message": "This feature requires µGateway firmware {min_version} or newer. Your gateway is running {current_version}."
+    },
+    "device_firmware_too_old": {
+      "message": "The µGateway accepted the request, but the physical button device is running firmware that is too old to support LED override. This is the firmware of the button/secondary control unit itself, not the µGateway. Update the affected device's firmware using the Wiser Home or eSetup app, then try again."
     }
   },
   "services": {
