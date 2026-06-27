@@ -1,0 +1,319 @@
+{
+  "config": {
+    "flow_title": "{name}",
+    "step": {
+      "user": {
+        "title": "Wiser by Feller µGateway verbinden",
+        "description": "Gib die IP-Adresse deines µGateways ein und klicke auf Absenden. Die Tasten sollten pink und violett zu blinken beginnen. Drücke innerhalb von 30 Sekunden eine der blinkenden Tasten am µGateway, um deine Home-Assistant-Instanz zu verbinden. Danach kann die Ersteinrichtung je nach Anzahl und Generation der Geräte in deinem Wiser-Netzwerk bis zu zwei Minuten dauern.",
+        "data": {
+          "host": "Host",
+          "username": "Benutzername",
+          "import_user": "Konfiguration importieren von"
+        },
+        "data_description": {
+          "host": "Der Hostname oder die IP-Adresse deines µGateways.",
+          "username": "Der für die API zu verwendende Benutzername. Du kannst einen beliebigen Wert eingeben, allerdings ist pro Benutzername nur eine Verbindung möglich. Wenn du mehrere Instanzen hast, verwende eindeutige Benutzernamen.",
+          "import_user": "Der Benutzer, von dem die bestehende Wiser-Konfiguration (wie Szenen, Räume und Lastnamen) importiert werden soll. Wenn keine anderen Systeme die API verwenden, kannst du zwischen 'installer' (Wiser-eSetup-App) und 'admin' (Wiser-Home-App) wählen."
+        }
+      },
+      "reconfigure": {
+        "title": "Wiser by Feller µGateway neu konfigurieren",
+        "description": "Aktualisiere die Verbindungsdaten für dein µGateway. Drücke innerhalb von 30 Sekunden eine beliebige blinkende Taste am Gerät, um die Verbindung wiederherzustellen.",
+        "data": {
+          "host": "Host",
+          "username": "Benutzername",
+          "import_user": "Konfiguration importieren von"
+        },
+        "data_description": {
+          "host": "Der neue Hostname oder die neue IP-Adresse deines µGateways.",
+          "username": "Der für die API zu verwendende Benutzername.",
+          "import_user": "Der Benutzer, von dem die bestehende Wiser-Konfiguration importiert werden soll."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Wiser by Feller µGateway erneut verbinden",
+        "description": "Gib die IP-Adresse deines µGateways ein und klicke auf Absenden. Die Tasten sollten pink und violett zu blinken beginnen. Drücke innerhalb von 30 Sekunden eine der blinkenden Tasten am µGateway, um deine Home-Assistant-Instanz zu verbinden.",
+        "data": {
+          "host": "Host",
+          "username": "Benutzername",
+          "import_user": "Konfiguration importieren von"
+        },
+        "data_description": {
+          "host": "Der Hostname oder die IP-Adresse deines µGateways.",
+          "username": "Der für die API zu verwendende Benutzername. Du kannst einen beliebigen Wert eingeben, allerdings ist pro Benutzername nur eine Verbindung möglich. Wenn du mehrere Instanzen hast, verwende eindeutige Benutzernamen.",
+          "import_user": "Der Benutzer, von dem die bestehende Wiser-Konfiguration (wie Szenen, Räume und Lastnamen) importiert werden soll. Wenn keine anderen Systeme die API verwenden, kannst du zwischen 'installer' (Wiser-eSetup-App) und 'admin' (Wiser-Home-App) wählen."
+        }
+      }
+    },
+    "abort": {
+      "all_configured": "Alle Wiser-µGateways sind bereits konfiguriert",
+      "already_configured": "Gerät ist bereits konfiguriert",
+      "already_in_progress": "Der Konfigurationsvorgang läuft bereits",
+      "no_gateways": "Keine Wiser-µGateways gefunden",
+      "not_wiser_gateway": "Das Gerät, mit dem du dich verbinden möchtest, ist kein Wiser-µGateway. Bist du sicher, dass du den richtigen Hostnamen oder die richtige IP eingegeben hast?",
+      "wrong_device": "Das Gerät unter der neuen Adresse hat eine andere Seriennummer. Verwende diesen Vorgang nur, um die Adresse desselben µGateways zu aktualisieren."
+    },
+    "error": {
+      "cannot_connect": "Verbindung fehlgeschlagen",
+      "invalid_auth": "Authentifizierung fehlgeschlagen",
+      "invalid_import_user": "Die Informationen dieses Benutzers konnten nicht importiert werden. Wenn du dich noch nie mit deinem System verbunden hast, verwende den Benutzer 'installer' statt 'admin'.",
+      "discover_timeout": "Wiser-µGateways konnten nicht gefunden werden",
+      "invalid_host": "Ungültiger Hostname oder ungültige IP-Adresse",
+      "linking": "Unerwarteter Fehler",
+      "register_failed": "Registrierung fehlgeschlagen, bitte versuche es erneut",
+      "unknown": "Unerwarteter Fehler",
+      "connection_timeout": "Zeitüberschreitung beim Verbindungsversuch. Bitte prüfe, ob der Hostname oder die IP erreichbar ist.",
+      "no_site_info": "Die API hat den Fehler 'no site info' zurückgegeben. Das bedeutet, dass dein System noch nicht fertig eingerichtet wurde. Weitere Informationen findest du im FAQ-Bereich der Integration."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "allow_missing_gateway_data": "Fehlende µGateway-Daten zulassen"
+        },
+        "data_description": {
+          "allow_missing_gateway_data": "Standardmässig schlägt die Einrichtung fehl, wenn Felder wie `fw_version` oder `serial_nr` für Geräte in der API-Antwort fehlen. Aktiviere diese Option zu Debug-Zwecken, um die Prüfung zu deaktivieren. WARNUNG: Mit Vorsicht verwenden, dies kann Entitäts-IDs und Funktionalität beeinträchtigen!"
+        }
+      }
+    }
+  },
+  "entity": {
+    "switch": {
+      "unnamed_flag": {
+        "name": "Unbenanntes Flag"
+      }
+    },
+    "button": {
+      "identify": {
+        "name": "Identifizieren"
+      }
+    },
+    "sensor": {
+      "rssi": {
+        "name": "RSSI"
+      },
+      "hail": {
+        "name": "Hagel",
+        "state": {
+          "on": "Hagel erkannt",
+          "off": "Kein Hagel"
+        }
+      },
+      "rain": {
+        "name": "Regen",
+        "state": {
+          "on": "Regen erkannt",
+          "off": "Kein Regen"
+        }
+      },
+      "last_reboot": {
+        "name": "Letzter Neustart"
+      },
+      "flash_free": {
+        "name": "Freier Flash-Speicher"
+      },
+      "flash_size": {
+        "name": "Flash-Speichergrösse"
+      },
+      "mem_size": {
+        "name": "Speichergrösse"
+      },
+      "mem_free": {
+        "name": "Freier Speicher"
+      },
+      "core_temp": {
+        "name": "Kerntemperatur"
+      },
+      "wlan_resets": {
+        "name": "WLAN-Resets"
+      },
+      "max_tasks": {
+        "name": "Maximale Tasks"
+      },
+      "wlan_rssi": {
+        "name": "WLAN-RSSI"
+      },
+      "reboot_cause": {
+        "name": "Neustart-Grund"
+      },
+      "sockets": {
+        "name": "Sockets"
+      }
+    }
+  },
+  "selector": {
+    "select_channel": {
+      "options": {
+        "0": "Linke (obere) oder mittlere Taste",
+        "1": "Rechte (obere) Taste",
+        "2": "Linke (untere) Taste",
+        "3": "Rechte (untere) Taste"
+      }
+    },
+    "select_led_index": {
+      "options": {
+        "0": "Primär (Hoch/Plus bei Dimmer- oder Motortasten)",
+        "1": "Runter / Minus (nur bei Dimmer- oder Motortasten)"
+      }
+    }
+  },
+  "issues": {
+    "missing_device_data": {
+      "title": "Unvollständige Gerätedaten für Gerät {device_id}",
+      "description": "Das µGateway hat unvollständige Daten für Gerät **{device_id}** zurückgegeben (fehlende Felder wie Seriennummer oder Firmware-Version). Dies kann zu nicht eindeutigen Geräte-IDs führen und wurde in [Feller-AG/wiser-api#43](https://github.com/Feller-AG/wiser-api/issues/43) dokumentiert. Die Integration wurde pausiert, um Datenbeschädigung zu verhindern.\n\nÖffne diese Reparatur, um das Problem zu beheben.",
+      "fix_flow": {
+        "step": {
+          "init": {
+            "title": "Unvollständige Gerätedaten",
+            "description": "Das µGateway hat unvollständige Daten für Gerät **{device_id}** zurückgegeben (fehlende Felder wie Seriennummer oder Firmware-Version). Dies kann zu nicht eindeutigen Geräte-IDs führen und wurde in [Feller-AG/wiser-api#43](https://github.com/Feller-AG/wiser-api/issues/43) dokumentiert. Die Integration wurde pausiert, um Datenbeschädigung zu verhindern.\n\nDie Behebung fordert das µGateway auf, das Gerät erneut einzulesen, und lädt anschliessend die Integration neu. Klicke auf **Weiter**, um die Behebung zu prüfen, oder schliesse diesen Dialog, um nichts zu tun.",
+            "submit": "Weiter"
+          },
+          "confirm": {
+            "title": "Gerätedaten aktualisieren",
+            "description": "Klicke auf **Beheben**, um eine Aktualisierung der Eigenschaften für Gerät **{device_id}** vom µGateway anzufordern. Dies kann einige Sekunden dauern. Die Integration wird automatisch neu geladen, wenn die Aktualisierung erfolgreich ist.\n\nWenn diese Behebung nicht funktioniert (z. B. bei Vorseriengeräten), kannst du die Option **Fehlende µGateway-Daten zulassen** in den Integrationseinstellungen aktivieren, um diese Prüfung zu umgehen. Dies kann unbeabsichtigte Nebenwirkungen haben, tu dies also nur, wenn du weisst, was du tust.",
+            "submit": "Beheben"
+          },
+          "reload": {
+            "title": "Unvollständige Gerätedaten",
+            "description": "Das µGateway hat unvollständige Daten für Gerät **{device_id}** zurückgegeben (fehlende Felder wie Seriennummer oder Firmware-Version), was zu nicht eindeutigen Geräte-IDs führen kann. Details findest du in [Issue #48](https://github.com/Syonix/ha-wiser-by-feller/issues/48) und [Feller-AG/wiser-api#43](https://github.com/Feller-AG/wiser-api/issues/43).\n\nDie Firmware deines µGateways ist älter als **6.0.40**, daher kann die Integration keine automatische Datenaktualisierung auslösen. Um das Problem zu beheben, versuche eine der folgenden Möglichkeiten:\n\n- **Aktualisiere die µGateway-Firmware** auf 6.0.40 oder neuer und öffne anschliessend diese Reparatur erneut, um die automatische Behebung zu verwenden.\n- **Trenne das betroffene Gerät kurz vom Strom**, damit das µGateway seine Daten neu einliest.\n- Aktiviere **Fehlende µGateway-Daten zulassen** in den Integrationseinstellungen, um diese Prüfung zu umgehen (nur wenn du weisst, was du tust).\n\nNachdem du eine der oben genannten Möglichkeiten ausprobiert hast, klicke auf **Neu laden**, um die Integration neu zu laden und die Gerätedaten erneut zu prüfen.",
+            "submit": "Neu laden"
+          }
+        },
+        "error": {
+          "refresh_failed": "Das µGateway hat die Aktualisierungsanfrage nicht akzeptiert. Bitte versuche es erneut oder prüfe die Verbindung zum µGateway.",
+          "reload_failed": "Die Aktualisierungsanfrage wurde gesendet, aber das µGateway meldet weiterhin unvollständige Daten. Das Problem ist möglicherweise erneut aufgetreten. Bitte versuche es erneut oder prüfe das µGateway.",
+          "reload_failed_legacy": "Die Gerätedaten sind nach dem Neuladen weiterhin unvollständig. Aktualisiere die µGateway-Firmware auf 6.0.40 oder neuer, trenne das betroffene Gerät kurz vom Strom oder aktiviere die Option \"Fehlende µGateway-Daten zulassen\" in den Integrationseinstellungen."
+        },
+        "abort": {
+          "missing_data": "Die Reparatur-Metadaten sind unvollständig — es kann nicht bestimmt werden, welches Gerät behoben werden soll.",
+          "entry_not_found": "Der µGateway-Konfigurationseintrag wurde nicht gefunden.",
+          "no_coordinator": "Der µGateway-Coordinator ist nicht verfügbar."
+        }
+      }
+    },
+    "unknown_load_type": {
+      "title": "Unbekannter Lasttyp \"{item_type}\" an Last {item_id}",
+      "description": "Last \"{item_name}\" (ID: {item_id}) hat einen unbekannten Typ \"{item_type}\" und wird von dieser Integration nicht unterstützt. Sie wird ignoriert, bis Unterstützung dafür hinzugefügt wird.\n\nWenn du Vorseriengeräte verwendest, melde diesen Lasttyp bitte den Maintainern der Integration, damit er hinzugefügt werden kann."
+    },
+    "unknown_sensor_type": {
+      "title": "Unbekannter Sensortyp \"{item_type}\" an Sensor {item_id}",
+      "description": "Sensor \"{item_name}\" (ID: {item_id}) hat einen unbekannten Typ \"{item_type}\" und wird von dieser Integration nicht unterstützt. Er wird ignoriert, bis Unterstützung dafür hinzugefügt wird.\n\nWenn du Vorseriengeräte verwendest, melde diesen Sensortyp bitte den Maintainern der Integration, damit er hinzugefügt werden kann."
+    }
+  },
+  "exceptions": {
+    "device_not_found": {
+      "message": "Gerät {device_id} wurde nicht gefunden."
+    },
+    "invalid_channel": {
+      "message": "Kanal {channel} existiert auf diesem Gerät nicht."
+    },
+    "status_light_failed": {
+      "message": "Statuslicht konnte nicht gesetzt werden: {error}"
+    },
+    "unexpected_gateway_result": {
+      "message": "Unerwartete Antwort vom µGateway: {error}"
+    },
+    "multiple_wlan_devices": {
+      "message": "Mehrere WLAN-Geräte (Gateways) im selben K+-Netzwerk gefunden: {first} und {second}. Es wird nur ein µGateway pro Netzwerk unterstützt."
+    },
+    "no_gateway_loaded": {
+      "message": "Aktuell ist kein Wiser-µGateway geladen."
+    },
+    "specify_gateway": {
+      "message": "Es sind mehrere µGateways konfiguriert. Wähle im Feld µGateway aus, welches verwendet werden soll."
+    },
+    "unmanaged_button": {
+      "message": "Diese Taste wird nicht verwaltet. Weitere Informationen findest du in der LED-Control-Dokumentation: https://github.com/Syonix/ha-wiser-by-feller/blob/main/docs/led-control.md"
+    },
+    "firmware_too_old": {
+      "message": "Diese Funktion erfordert µGateway-Firmware {min_version} oder neuer. Dein Gateway läuft mit {current_version}."
+    }
+  },
+  "services": {
+    "status_light": {
+      "name": "Statuslicht konfigurieren",
+      "description": "Konfiguriere Farbe und Helligkeit des Statuslichts für ein Wiser-by-Feller-Gerät.",
+      "fields": {
+        "device": {
+          "name": "Gerät",
+          "description": "Das Gerät (Last oder Szene / Nebenstelle)."
+        },
+        "color": {
+          "name": "Farbe",
+          "description": "Die RGB-Farbe, die auf dem Statuslicht angezeigt werden soll."
+        },
+        "color_off": {
+          "name": "Farbe (Last aus)",
+          "description": "Die RGB-Farbe, die auf dem Statuslicht angezeigt wird, wenn die Last ausgeschaltet ist. Wenn nicht aktiviert, wird der Wert von \"Farbe\" verwendet."
+        },
+        "channel": {
+          "name": "Kanal",
+          "description": "Die bestimmte Taste am Gerät, die gesteuert werden soll."
+        },
+        "brightness_on": {
+          "name": "Helligkeit (Last ein)",
+          "description": "Helligkeitsstufe der Tastenbeleuchtung, wenn die Last eingeschaltet ist (0–100)."
+        },
+        "brightness_off": {
+          "name": "Helligkeit (Last aus)",
+          "description": "Helligkeitsstufe der Tastenbeleuchtung, wenn die Last ausgeschaltet ist (0–100). Wenn nicht aktiviert, wird der Wert von \"Helligkeit bei eingeschaltet\" verwendet."
+        }
+      }
+    },
+    "set_button_led_override": {
+      "name": "Temporäre Tasten-LED-Beleuchtung setzen",
+      "description": "Setzt eine temporäre LED-Beleuchtung für eine Wiser-Tasten-LED.",
+      "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "Das µGateway, zu dem die Taste gehört. Optional bei einem einzelnen Gateway; erforderlich, wenn mehrere konfiguriert sind."
+        },
+        "button_id": {
+          "name": "Tasten-ID",
+          "description": "Wiser-Tasten-ID. Verwende den Dienst \"Taste finden\", um sie zu ermitteln."
+        },
+        "led_index": {
+          "name": "LED",
+          "description": "Welche LED an der Taste gesteuert werden soll."
+        },
+        "rgb_color": {
+          "name": "Farbe",
+          "description": "LED-Farbe."
+        },
+        "effect": {
+          "name": "Effekt",
+          "description": "LED-Blinkmuster."
+        }
+      }
+    },
+    "clear_button_led_override": {
+      "name": "Temporäre Tasten-LED-Beleuchtung aufheben",
+      "description": "Deaktiviert die temporäre LED-Beleuchtung und kehrt zum konfigurierten Wiser-LED-Verhalten zurück.",
+      "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "Das µGateway, zu dem die Taste gehört. Optional bei einem einzelnen Gateway; erforderlich, wenn mehrere konfiguriert sind."
+        },
+        "button_id": {
+          "name": "Tasten-ID",
+          "description": "Wiser-Tasten-ID. Verwende den Dienst \"Taste finden\", um sie zu ermitteln."
+        },
+        "led_index": {
+          "name": "LED",
+          "description": "Welche LED an der Taste gesteuert werden soll."
+        }
+      }
+    },
+    "find_button": {
+      "name": "Taste finden",
+      "description": "Aktiviert den Find-Me-Modus: Alle Tasten-LEDs beginnen zu blinken. Drücke eine beliebige physische Taste, um sie zu identifizieren. Die Tasten-ID und weitere Informationen werden zurückgegeben.",
+      "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "Das µGateway, auf dem der Find-Me-Modus aktiviert werden soll. Optional bei einem einzelnen Gateway; erforderlich, wenn mehrere konfiguriert sind."
+        }
+      }
+    }
+  }
+}
