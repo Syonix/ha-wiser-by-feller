@@ -316,6 +316,40 @@ async def test_clear_button_led_override_raises_service_error_on_api_failure(
         )
 
 
+async def test_set_button_led_override_device_firmware_too_old(
+    hass, setup_integration, mock_coordinator
+):
+    """A gateway 'device FW-Version too old' error maps to a clear translated message."""
+    mock_coordinator.api.async_set_button_led = AsyncMock(
+        side_effect=UnsuccessfulRequest("device FW-Version too old")
+    )
+    with pytest.raises(ServiceValidationError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN,
+            "set_button_led_override",
+            {"button_id": 43, "led_index": "0", "rgb_color": [255, 0, 0]},
+            blocking=True,
+        )
+    assert exc_info.value.translation_key == "device_firmware_too_old"
+
+
+async def test_clear_button_led_override_device_firmware_too_old(
+    hass, setup_integration, mock_coordinator
+):
+    """clear_button_led_override maps the device firmware error to a clear message."""
+    mock_coordinator.api.async_set_button_led = AsyncMock(
+        side_effect=UnsuccessfulRequest("device FW-Version too old")
+    )
+    with pytest.raises(ServiceValidationError) as exc_info:
+        await hass.services.async_call(
+            DOMAIN,
+            "clear_button_led_override",
+            {"button_id": 43, "led_index": "0"},
+            blocking=True,
+        )
+    assert exc_info.value.translation_key == "device_firmware_too_old"
+
+
 # ── gateway selection for button services ─────────────────────────────────────
 
 
