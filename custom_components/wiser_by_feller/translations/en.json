@@ -215,7 +215,7 @@
       "message": "Unexpected response from the µGateway: {error}"
     },
     "multiple_wlan_devices": {
-      "message": "Multiple WLAN devices found in the same network: {first} and {second}. Only one µGateway per network is supported."
+      "message": "Multiple WLAN devices (gateways) found in the same K+ network: {first} and {second}. Only one µGateway per network is supported."
     },
     "no_gateway_loaded": {
       "message": "No Wiser µGateway is currently loaded."
@@ -307,7 +307,7 @@
     },
     "find_button": {
       "name": "Find Button",
-      "description": "Activates find-me mode: all button LEDs start blinking. Press any physical button to identify it. The button ID, device, channel, and structured label fields are returned and shown as a notification.",
+      "description": "Activates find-me mode: all button LEDs start blinking. Press any physical button to identify it. The button ID and other information are returned.",
       "fields": {
         "config_entry_id": {
           "name": "µGateway",
