@@ -111,12 +111,38 @@ def test_resolve_device_name_room_already_in_name():
     assert result.count("Bedroom") == 1
 
 
+def test_resolve_device_name_self_describing_front():
+    """Touch display fronts omit the actuator module name."""
+    device = _make_device(
+        "Touch Thermostat", "Thermostat Nebenstelle", fw_id_c="0x9200"
+    )
+    assert resolve_device_name(device, None, None) == "Touch Thermostat"
+
+
+def test_resolve_device_name_standard_front_keeps_actuator_name():
+    """Push button fronts keep the combined name format."""
+    device = _make_device("Druckschalter 1K", "LED-Universaldimmer", fw_id_c="0x8402")
+    result = resolve_device_name(device, None, None)
+    assert result == "Druckschalter 1K (LED-Universaldimmer)"
+
+
+def test_resolve_device_name_self_describing_front_empty_c_name():
+    """An empty front name falls back to the combined name format."""
+    device = _make_device("", "Thermostat Nebenstelle", fw_id_c="0x9200")
+    assert "Thermostat Nebenstelle" in resolve_device_name(device, None, None)
+
+
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 
-def _make_device(comm_name_c: str, comm_name_a: str):
+def _make_device(comm_name_c: str, comm_name_a: str, fw_id_c: str = ""):
     device = MagicMock()
-    device.c = {"comm_name": comm_name_c, "comm_ref": "ABC", "fw_version": "1.0"}
+    device.c = {
+        "comm_name": comm_name_c,
+        "comm_ref": "ABC",
+        "fw_version": "1.0",
+        "fw_id": fw_id_c,
+    }
     device.a = {"comm_name": comm_name_a, "comm_ref": "ABC", "fw_version": "1.0"}
     device.c_name = comm_name_c
     device.a_name = comm_name_a

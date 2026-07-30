@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from aiowiserbyfeller import Device, Load
+from aiowiserbyfeller.util import parse_wiser_device_fwid
+
+from .const import SELF_DESCRIBING_FRONT_HW_TYPES
 
 
 def resolve_load_name(load: Load, room: dict):
@@ -13,6 +16,17 @@ def resolve_load_name(load: Load, room: dict):
     return f"{room['name']} {load.name}"
 
 
+def is_self_describing_front(device: Device) -> bool:
+    """Return True if the front module name fully describes the device.
+
+    Fronts like the touch display thermostat are identified by the hardware
+    type category encoded in the C-block firmware ID. For those, the actuator
+    module name (e.g. "Thermostat Nebenstelle") adds no useful information.
+    """
+    info = parse_wiser_device_fwid(device.c.get("fw_id", ""))
+    return info.get("hw_type") in SELF_DESCRIBING_FRONT_HW_TYPES
+
+
 def resolve_device_name(device: Device, room: dict | None, load: Load | None) -> str:
     """Get the name of a device."""
     if load is not None:
@@ -20,7 +34,10 @@ def resolve_device_name(device: Device, room: dict | None, load: Load | None) ->
     else:
         name_c = device.c["comm_name"]
         name_a = device.a["comm_name"]
-        name = name_c if name_a in name_c else f"{name_c} ({name_a})"
+        if name_a in name_c or (name_c and is_self_describing_front(device)):
+            name = name_c
+        else:
+            name = f"{name_c} ({name_a})"
 
     if room is None or room["name"] in name:
         return name
