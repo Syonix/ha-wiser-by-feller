@@ -107,6 +107,9 @@
           "off": "No rain"
         }
       },
+      "ntc_temperature": {
+        "name": "NTC temperature"
+      },
       "last_reboot": {
         "name": "Last Reboot"
       },

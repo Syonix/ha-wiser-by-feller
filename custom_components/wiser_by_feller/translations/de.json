@@ -107,6 +107,9 @@
           "off": "Kein Regen"
         }
       },
+      "ntc_temperature": {
+        "name": "NTC-Temperatur"
+      },
       "last_reboot": {
         "name": "Letzter Neustart"
       },

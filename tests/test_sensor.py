@@ -7,7 +7,9 @@ from aiowiserbyfeller import Brightness, Device, Hail, Rain, Temperature, Wind
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.components.sensor import SensorDeviceClass
 from homeassistant.const import UnitOfSpeed, UnitOfTemperature
+from homeassistant.helpers import entity_registry as er
 
+from custom_components.wiser_by_feller.const import DOMAIN
 from custom_components.wiser_by_feller.coordinator import WiserCoordinator
 from custom_components.wiser_by_feller.sensor import (
     GW_SENSORS,
@@ -66,11 +68,15 @@ def _make_device():
     return device
 
 
-def _make_sensor(spec, sensor_id=5, device_id="0000a98f", room=None):
+def _make_sensor(
+    spec, sensor_id=5, device_id="0000a98f", room=None, channel=0, sub_type=None
+):
     sensor = MagicMock(spec=spec)
     sensor.id = sensor_id
     sensor.device = device_id
     sensor.raw_data = {}
+    sensor.channel = channel
+    sensor.sub_type = sub_type
     if hasattr(sensor, "room"):
         sensor.room = room
     return sensor
@@ -169,6 +175,62 @@ def test_temperature_sensor_unique_id_has_suffix():
     sensor = _make_sensor(Temperature)
     entity = WiserTemperatureSensorEntity(coord, _make_device(), None, sensor)
     assert entity.unique_id.endswith("_temperature")
+
+
+def test_temperature_sensor_unique_id_includes_channel():
+    """Temperature sensor unique_id includes the sensor channel."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Temperature, channel=0)
+    entity = WiserTemperatureSensorEntity(coord, _make_device(), None, sensor)
+    assert entity.unique_id == "0000a98f_0_temperature"
+
+
+def test_ntc_temperature_sensor_unique_id_has_ntc_suffix():
+    """NTC temperature sensor unique_id uses the '_ntc_temperature' suffix."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Temperature, channel=16, sub_type="ntc")
+    entity = WiserTemperatureSensorEntity(coord, _make_device(), None, sensor)
+    assert entity.unique_id == "0000a98f_16_ntc_temperature"
+
+
+def test_ntc_sub_type_read_from_raw_data():
+    """The 'sub_type' key from the API is used when the library returns None.
+
+    aiowiserbyfeller <= 2.2.1 reads the key 'subtype', while the µGateway API
+    returns 'sub_type'.
+    """
+    coord = _make_coordinator()
+    sensor = _make_sensor(Temperature, channel=16)
+    sensor.raw_data = {"sub_type": "ntc"}
+    entity = WiserTemperatureSensorEntity(coord, _make_device(), None, sensor)
+    assert entity.unique_id == "0000a98f_16_ntc_temperature"
+
+
+def test_ntc_temperature_sensor_translation_key():
+    """NTC temperature sensor uses the ntc_temperature translation key."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Temperature, channel=16, sub_type="ntc")
+    entity = WiserTemperatureSensorEntity(coord, _make_device(), None, sensor)
+    assert entity.translation_key == "ntc_temperature"
+
+
+def test_room_temperature_sensor_has_no_translation_key():
+    """Non-NTC temperature sensor keeps the device class default name."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Temperature, channel=0)
+    entity = WiserTemperatureSensorEntity(coord, _make_device(), None, sensor)
+    assert entity.translation_key is None
+
+
+def test_temperature_sensors_on_same_device_have_distinct_unique_ids():
+    """Two temperature sensors on one device must not collide."""
+    coord = _make_coordinator()
+    device = _make_device()
+    room_sensor = _make_sensor(Temperature, sensor_id=163, channel=0)
+    ntc_sensor = _make_sensor(Temperature, sensor_id=166, channel=16, sub_type="ntc")
+    room_entity = WiserTemperatureSensorEntity(coord, device, None, room_sensor)
+    ntc_entity = WiserTemperatureSensorEntity(coord, device, None, ntc_sensor)
+    assert room_entity.unique_id != ntc_entity.unique_id
 
 
 # ── WiserIlluminanceSensorEntity ──────────────────────────────────────────────
@@ -286,6 +348,101 @@ async def test_temperature_sensor_excluded_when_assigned_to_hvac(
         s for s in sensor_states if "temperature" in s and "core_temperature" not in s
     ]
     assert len(temperature_entities) == 0
+
+
+async def test_ntc_sensor_created_when_assigned_to_hvac(
+    hass, mock_config_entry, mock_coordinator
+):
+    """NTC probe of an assigned thermostat is still exposed as standalone sensor."""
+    device = _make_device()
+    room_sensor = _make_sensor(
+        Temperature, sensor_id=163, device_id=device.id, channel=0
+    )
+    room_sensor.value_temperature = 21.0
+    ntc_sensor = _make_sensor(
+        Temperature, sensor_id=166, device_id=device.id, channel=16, sub_type="ntc"
+    )
+    ntc_sensor.value_temperature = 25.9
+
+    mock_coordinator.sensors = {163: room_sensor, 166: ntc_sensor}
+    mock_coordinator.devices = {device.id: device}
+    mock_coordinator.states = {}
+    mock_coordinator.assigned_thermostats = {device.id: 10}
+
+    mock_config_entry.add_to_hass(hass)
+    with (
+        patch("custom_components.wiser_by_feller.Auth"),
+        patch("custom_components.wiser_by_feller.WiserByFellerAPI"),
+        patch(
+            "custom_components.wiser_by_feller.WiserCoordinator",
+            return_value=mock_coordinator,
+        ),
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    ent_reg = er.async_get(hass)
+    # Room temperature is represented by the climate entity, not a sensor.
+    assert (
+        ent_reg.async_get_entity_id("sensor", DOMAIN, f"{device.id}_0_temperature")
+        is None
+    )
+    # The NTC probe is not part of the climate entity and must remain visible.
+    assert (
+        ent_reg.async_get_entity_id("sensor", DOMAIN, f"{device.id}_16_ntc_temperature")
+        is not None
+    )
+
+
+# ── unique ID migration ──────────────────────────────────────────────────────
+
+
+async def test_sensor_unique_id_migration(hass, mock_config_entry, mock_coordinator):
+    """Legacy unique IDs without channel are migrated on setup."""
+    device = _make_device()
+    room_sensor = _make_sensor(
+        Temperature, sensor_id=163, device_id=device.id, channel=0
+    )
+    room_sensor.value_temperature = 26.9
+    ntc_sensor = _make_sensor(
+        Temperature, sensor_id=166, device_id=device.id, channel=16, sub_type="ntc"
+    )
+    ntc_sensor.value_temperature = 25.9
+
+    mock_coordinator.sensors = {163: room_sensor, 166: ntc_sensor}
+    mock_coordinator.devices = {device.id: device}
+    mock_coordinator.states = {}
+
+    mock_config_entry.add_to_hass(hass)
+    ent_reg = er.async_get(hass)
+    legacy = ent_reg.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{device.id}_temperature",
+        config_entry=mock_config_entry,
+    )
+
+    with (
+        patch("custom_components.wiser_by_feller.Auth"),
+        patch("custom_components.wiser_by_feller.WiserByFellerAPI"),
+        patch(
+            "custom_components.wiser_by_feller.WiserCoordinator",
+            return_value=mock_coordinator,
+        ),
+    ):
+        await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    # The legacy ID maps to the first temperature sensor in API order.
+    migrated = ent_reg.async_get(legacy.entity_id)
+    assert migrated is not None
+    assert migrated.unique_id == f"{device.id}_0_temperature"
+
+    # The NTC sensor is registered separately with its own unique ID.
+    assert (
+        ent_reg.async_get_entity_id("sensor", DOMAIN, f"{device.id}_16_ntc_temperature")
+        is not None
+    )
 
 
 # ── WiserLastRebootEntity hysteresis ─────────────────────────────────────────
