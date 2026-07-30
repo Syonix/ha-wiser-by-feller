@@ -224,7 +224,13 @@
       "message": "Es sind mehrere µGateways konfiguriert. Wähle im Feld µGateway aus, welches verwendet werden soll."
     },
     "unmanaged_button": {
-      "message": "Diese Taste wird nicht verwaltet. Weitere Informationen findest du in der LED-Control-Dokumentation: https://github.com/Syonix/ha-wiser-by-feller/blob/main/docs/led-control.md"
+      "message": "Diese Taste ist auf dem µGateway nicht registriert (Gerät {device}, Kanal {channel}). Registriere sie mit dem Dienst register_button oder führe \"Taste finden\" mit aktivierter Option \"Nicht verwaltete Taste registrieren\" erneut aus. Weitere Informationen findest du in der LED-Control-Dokumentation: https://github.com/Syonix/ha-wiser-by-feller/blob/main/docs/led-control.md"
+    },
+    "button_register_failed": {
+      "message": "Taste konnte nicht registriert werden: {error}"
+    },
+    "button_unregister_failed": {
+      "message": "Registrierung der Taste konnte nicht entfernt werden: {error}"
     },
     "firmware_too_old": {
       "message": "Diese Funktion erfordert µGateway-Firmware {min_version} oder neuer. Dein Gateway läuft mit {current_version}."
@@ -310,11 +316,47 @@
     },
     "find_button": {
       "name": "Taste finden",
-      "description": "Aktiviert den Find-Me-Modus: Alle Tasten-LEDs beginnen zu blinken. Drücke eine beliebige physische Taste, um sie zu identifizieren. Die Tasten-ID und weitere Informationen werden zurückgegeben.",
+      "description": "Aktiviert den Find-Me-Modus: Alle Tasten-LEDs beginnen zu blinken. Drücke eine beliebige Taste, um sie zu identifizieren. Die Tasten-ID und weitere Informationen werden zurückgegeben.",
       "fields": {
         "config_entry_id": {
           "name": "µGateway",
           "description": "Das µGateway, auf dem der Find-Me-Modus aktiviert werden soll. Optional bei einem einzelnen Gateway; erforderlich, wenn mehrere konfiguriert sind."
+        },
+        "register_unmanaged": {
+          "name": "Nicht verwaltete Taste registrieren",
+          "description": "Wenn die gedrückte Taste noch nicht auf dem µGateway registriert ist, wird sie automatisch registriert und die neue Tasten-ID zurückgegeben. Erfordert µGateway-Firmware 6.0.42+. Hinweis: Die Tastenverwaltung ist eine Beta-Funktion der µGateway-Firmware — registriere nur Tasten, die du wirklich benötigst, da zu viele registrierte Tasten das Gateway verlangsamen können."
+        }
+      }
+    },
+    "register_button": {
+      "name": "Taste registrieren",
+      "description": "Registriert eine beliebige physische Taste auf dem µGateway, damit sie eine Tasten-ID erhält und für Automationen verwendet werden kann. Erfordert µGateway-Firmware 6.0.42+. Hinweis: Die Tastenverwaltung ist eine Beta-Funktion der µGateway-Firmware — registriere nur Tasten, die du wirklich benötigst, da zu viele registrierte Tasten das Gateway verlangsamen können.",
+      "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "Das µGateway, auf dem die Taste registriert werden soll. Optional bei einem einzelnen Gateway; erforderlich, wenn mehrere konfiguriert sind."
+        },
+        "device": {
+          "name": "Gerät",
+          "description": "Geräte-Referenz des Gateways (z. B. 0000a98f). Verwende den Dienst \"Taste finden\", um sie zu ermitteln."
+        },
+        "channel": {
+          "name": "Kanal",
+          "description": "Eingangskanal der Taste am Gerät."
+        }
+      }
+    },
+    "unregister_button": {
+      "name": "Tastenregistrierung entfernen",
+      "description": "Entfernt eine registrierte Taste vom µGateway. Sie sendet danach keine Tastenereignisse mehr und damit verbundene Automationen funktionieren nicht mehr. Erfordert µGateway-Firmware 6.0.42+.",
+      "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "Das µGateway, zu dem die Taste gehört. Optional bei einem einzelnen Gateway; erforderlich, wenn mehrere konfiguriert sind."
+        },
+        "button_id": {
+          "name": "Tasten-ID",
+          "description": "Wiser-Tasten-ID. Verwende den Dienst \"Taste finden\", um sie zu ermitteln."
         }
       }
     }

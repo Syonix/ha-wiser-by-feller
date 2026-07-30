@@ -341,6 +341,70 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
 
         return {"button_id": None, "device": None, "channel": None}
 
+    async def async_register_button(self, device: str, channel: int) -> Button:
+        """Register an available (sleeping) button on the µGateway."""
+        try:
+            created = await self._api.async_create_button(device, channel)
+        except UnsuccessfulRequest as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="button_register_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+
+        await self.async_update_managed_buttons()
+
+        # The µGateway has been observed returning the created button as a
+        # single object although the API spec declares a list (reported
+        # upstream). aiowiserbyfeller then wraps each dict key in a Button
+        # whose raw_data is a string, so guard the shape here and fall back
+        # to the refreshed cache below.
+        button = next(
+            (
+                b
+                for b in created
+                if isinstance(b.raw_data, dict)
+                and b.device == device
+                and b.channel == channel
+                and b.id is not None
+            ),
+            None,
+        )
+        if button is None and self._managed_buttons:
+            button = next(
+                (
+                    b
+                    for b in self._managed_buttons.values()
+                    if b.device == device and b.channel == channel
+                ),
+                None,
+            )
+        if button is None:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="button_register_failed",
+                translation_placeholders={
+                    "error": (
+                        "µGateway did not return the created button for "
+                        f"{device}/{channel}"
+                    )
+                },
+            )
+        return button
+
+    async def async_unregister_button(self, button_id: int) -> Button:
+        """Unregister (delete) a managed button from the µGateway."""
+        try:
+            button = await self._api.async_delete_button(button_id)
+        except UnsuccessfulRequest as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="button_unregister_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+        await self.async_update_managed_buttons()
+        return button
+
     def resolve_managed_button_fields(self, button_id: int) -> dict:
         """Return structured display fields for a managed button."""
         empty: dict = {"room_name": None, "device_name": None, "scene_name": None}

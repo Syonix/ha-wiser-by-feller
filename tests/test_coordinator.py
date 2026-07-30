@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from aiowiserbyfeller import (
     AuthorizationFailed,
+    Button,
     Load,
     Sensor,
     UnauthorizedUser,
@@ -13,7 +14,11 @@ from aiowiserbyfeller import (
 )
 from aiowiserbyfeller.const import LOAD_SUBTYPE_ONOFF_DTO, LOAD_TYPE_ONOFF
 import aiowiserbyfeller.errors
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError
+from homeassistant.exceptions import (
+    ConfigEntryAuthFailed,
+    ConfigEntryError,
+    ServiceValidationError,
+)
 from homeassistant.helpers.update_coordinator import UpdateFailed
 import pytest
 
@@ -493,6 +498,110 @@ def test_resolve_button_fields_scene_none_when_button_has_no_job(coordinator):
     coordinator._rooms = {}
     coordinator._scenes = {1: _make_scene_for_coord(job_id=100)}
     assert coordinator.resolve_managed_button_fields(1)["scene_name"] is None
+
+
+# ── async_register_button / async_unregister_button ──────────────────────────
+
+
+async def test_register_button_calls_api_and_refreshes_cache(coordinator, mock_api):
+    """Registering a button posts to the API and refreshes the managed cache."""
+    button = _make_button(button_id=7, device_id="00019edc", channel=1)
+    mock_api.async_create_button = AsyncMock(return_value=[button])
+    mock_api.async_get_managed_buttons = AsyncMock(return_value=[button])
+
+    result = await coordinator.async_register_button("00019edc", 1)
+
+    mock_api.async_create_button.assert_awaited_once_with("00019edc", 1)
+    mock_api.async_get_managed_buttons.assert_awaited_once()
+    assert result is button
+    assert coordinator._managed_buttons == {7: button}
+
+
+async def test_register_button_survives_single_object_response(coordinator, mock_api):
+    """A single-object POST response (observed firmware behavior) is handled gracefully.
+
+    The µGateway has been observed returning the created button as one JSON
+    object instead of the list the API spec declares (reported upstream). The
+    library then iterates the dict keys, producing Button instances whose
+    raw_data is a string. The coordinator must skip those and resolve the
+    button from the refreshed managed cache.
+    """
+    # What aiowiserbyfeller produces when the gateway returns a single object:
+    garbage = [Button(key, MagicMock()) for key in ("id", "device", "channel")]
+    created = _make_button(button_id=9, device_id="00019edc", channel=1)
+    mock_api.async_create_button = AsyncMock(return_value=garbage)
+    mock_api.async_get_managed_buttons = AsyncMock(return_value=[created])
+
+    result = await coordinator.async_register_button("00019edc", 1)
+
+    assert result is created
+
+
+async def test_register_button_falls_back_to_managed_cache(coordinator, mock_api):
+    """When the POST response lacks the button, it is found in the refreshed cache."""
+    other = _make_button(button_id=1, device_id="aabbccdd", channel=0)
+    created = _make_button(button_id=8, device_id="00019edc", channel=2)
+    mock_api.async_create_button = AsyncMock(return_value=[other])
+    mock_api.async_get_managed_buttons = AsyncMock(return_value=[other, created])
+
+    result = await coordinator.async_register_button("00019edc", 2)
+
+    assert result is created
+
+
+async def test_register_button_missing_result_raises(coordinator, mock_api):
+    """When neither the response nor the cache has the button, a clear error is raised."""
+    mock_api.async_create_button = AsyncMock(return_value=[])
+    mock_api.async_get_managed_buttons = AsyncMock(return_value=[])
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await coordinator.async_register_button("00019edc", 0)
+
+    assert exc.value.translation_key == "button_register_failed"
+
+
+async def test_register_button_api_error_raises_translated(coordinator, mock_api):
+    """An API error during registration maps to a translated validation error."""
+    mock_api.async_create_button = AsyncMock(
+        side_effect=UnsuccessfulRequest("input already assigned")
+    )
+    mock_api.async_get_managed_buttons = AsyncMock(return_value=[])
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await coordinator.async_register_button("00019edc", 0)
+
+    assert exc.value.translation_key == "button_register_failed"
+    assert exc.value.translation_placeholders == {"error": "input already assigned"}
+    mock_api.async_get_managed_buttons.assert_not_awaited()
+
+
+async def test_unregister_button_calls_api_and_refreshes_cache(coordinator, mock_api):
+    """Unregistering a button deletes it via the API and refreshes the cache."""
+    button = _make_button(button_id=7, device_id="00019edc", channel=1)
+    mock_api.async_delete_button = AsyncMock(return_value=button)
+    mock_api.async_get_managed_buttons = AsyncMock(return_value=[])
+
+    result = await coordinator.async_unregister_button(7)
+
+    mock_api.async_delete_button.assert_awaited_once_with(7)
+    mock_api.async_get_managed_buttons.assert_awaited_once()
+    assert result is button
+    assert coordinator._managed_buttons == {}
+
+
+async def test_unregister_button_api_error_raises_translated(coordinator, mock_api):
+    """An API error during unregistration maps to a translated validation error."""
+    mock_api.async_delete_button = AsyncMock(
+        side_effect=UnsuccessfulRequest("api not found")
+    )
+    mock_api.async_get_managed_buttons = AsyncMock(return_value=[])
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await coordinator.async_unregister_button(7)
+
+    assert exc.value.translation_key == "button_unregister_failed"
+    assert exc.value.translation_placeholders == {"error": "api not found"}
+    mock_api.async_get_managed_buttons.assert_not_awaited()
 
 
 async def test_ws_idle_logs_warning_once(coordinator, mock_api, caplog):

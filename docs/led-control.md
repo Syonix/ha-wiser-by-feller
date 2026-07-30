@@ -39,7 +39,7 @@ Before you can override an LED, you need to find the button ID:
 > Button IDs are only unique per µGateway. If you have more than one µGateway configured, you must select which one a service call targets via the **µGateway** field (`config_entry_id`). With a single µGateway the field is optional and that gateway is used automatically.
 
 > [!NOTE]
-> If you press a button that is not yet configured, the service does not return a button ID and directs you to the documentation instead. See [Configuring Buttons in the Wiser Gateway](#%EF%B8%8F-configuring-buttons-in-the-wiser-gateway) below.
+> If you press a button that is not yet configured (an *unmanaged* button), the service raises an error naming the button's device reference and channel. You can either register it in the same flow by calling the service with **Register unmanaged button** (`register_unmanaged: true`), or register it manually afterwards with the **register button** service. See [Registering Buttons](#%EF%B8%8F-registering-buttons) below.
 
 ### 🎨 Overriding LEDs
 Once you have a button ID, use the **override LED** service to set the LED state. You specify the button ID, the color as RGB values, and a blink pattern.
@@ -50,7 +50,41 @@ Once you have a button ID, use the **override LED** service to set the LED state
 ### ↩️ Clearing Overrides
 The **clear LED** service reverts an overridden LED back to its configured state. For example, if you previously configured a button to red with 50% brightness via device configuration, then used the override service to set it to blue at full brightness, calling clear returns it to the original red at 50% brightness.
 
-### 🛠️ Configuring Buttons in the Wiser Gateway
+### 🛠️ Registering Buttons
+
+> [!NOTE]
+> Requires µGateway firmware **≥ 6.0.42**.
+
+Only *registered* (managed) buttons have a button ID and emit [button events](button-triggers.md). Buttons that have never been registered are "sleeping": they work physically, but the gateway does not expose them.
+
+> [!WARNING]
+> Button management is a **beta feature** of the µGateway firmware. Only register buttons you actually need — too many registered buttons can slow the gateway down.
+
+The easiest way to register a button is directly from the **find button** service:
+
+```yaml
+action: wiser_by_feller.find_button
+data:
+  register_unmanaged: true
+response_variable: found
+```
+
+Press the physical button when the LEDs start blinking. If it was unmanaged, it is registered automatically and `found.button_id` contains its new button ID.
+
+Alternatively, register it explicitly if you already know the device reference and channel (e.g. from a previous `find_button` error message):
+
+```yaml
+action: wiser_by_feller.register_button
+data:
+  device: 0000a98f
+  channel: 1
+```
+
+To remove a registration again, use `wiser_by_feller.unregister_button` with the button ID.
+
+<details>
+<summary>Configuring buttons in the Wiser gateway web UI instead</summary>
+
 1. Navigate to `http://<gateway-ip>/buttons.html` (login is required)
 2. Press the `Find me 📍` button (top right)
 3. Tap the button you like to set up. The line in the list will be highlighted.
@@ -58,6 +92,8 @@ The **clear LED** service reverts an overridden LED back to its configured state
 5. If it's already managed, you will see the ID there. The button is ready for use.
 6. If it's not managed yet, press the `🔳 Create` button.
 7. Press the `ℹ️ Show Button Info` or refer to the [Feller Wiser Tutorial](https://github.com/Feller-AG/wiser-tutorial) for more information.
+
+</details>
 
 ## 📋 Service Reference
 
@@ -92,9 +128,10 @@ Activates find-me mode: all button LEDs start blinking. Press any physical butto
 
 **Parameters:**
 
-| Parameter         | Required | Type     | Description                                                                                                   |
-|-------------------|----------|----------|---------------------------------------------------------------------------------------------------------------|
-| `config_entry_id` |          | `string` | µGateway to activate find-me mode on. Optional with a single µGateway; required when multiple are configured. |
+| Parameter            | Required | Type     | Description                                                                                                            |
+|----------------------|----------|----------|--------------------------------------------------------------------------------------------------------------------------|
+| `config_entry_id`    |          | `string` | µGateway to activate find-me mode on. Optional with a single µGateway; required when multiple are configured.          |
+| `register_unmanaged` |          | `bool`   | If the pressed button is not yet registered, register it automatically and return its new button ID. Requires firmware ≥ 6.0.42. Defaults to `false`. |
 
 **Response fields:**
 
@@ -108,13 +145,72 @@ Activates find-me mode: all button LEDs start blinking. Press any physical butto
 | `scene_name`  | `str \| null` | Name of the linked scene, if the button triggers one |
 
 > [!NOTE]
-> Pressing an unmanaged button raises an error instead of returning a response. 
+> Pressing an unmanaged button raises an error instead of returning a response, unless `register_unmanaged` is enabled. The error message names the button's device reference and channel, which can be passed to `register_button`.
 > `button_id` is only `null` in the rare case where the gateway reports a press it cannot resolve at all.
 
 **Example automation:**
 ```yaml
 action: wiser_by_feller.find_button
 response_variable: found
+```
+
+**Find and register in one call:**
+```yaml
+action: wiser_by_feller.find_button
+data:
+  register_unmanaged: true
+response_variable: found
+```
+
+### `wiser_by_feller.register_button`
+Registers an available (sleeping) physical button on the µGateway so it gets a button ID and starts emitting [button events](button-triggers.md). Requires µGateway firmware ≥ 6.0.42.
+
+> [!WARNING]
+> Button management is a **beta feature** of the µGateway firmware. Only register buttons you actually need — too many registered buttons can slow the gateway down.
+
+**Parameters:**
+
+| Parameter         | Required | Type     | Description                                                                                             |
+|-------------------|----------|----------|-----------------------------------------------------------------------------------------------------------|
+| `config_entry_id` |          | `string` | µGateway to register the button on. Optional with a single µGateway; required when multiple are configured. |
+| `device`          | ✅        | `string` | Gateway device reference (e.g. `0000a98f`), as reported by `find_button`.                               |
+| `channel`         | ✅        | `int`    | Input channel of the button on the device.                                                              |
+
+**Response fields:**
+
+| Field         | Type          | Description                                          |
+|---------------|---------------|------------------------------------------------------|
+| `button_id`   | `int`         | Wiser button ID of the newly registered button       |
+| `device`      | `str`         | Internal device ID                                   |
+| `channel`     | `int`         | Input channel on the device                          |
+| `room_name`   | `str \| null` | Room name resolved from the device's load assignment |
+| `device_name` | `str \| null` | Human-readable device name                           |
+| `scene_name`  | `str \| null` | Name of the linked scene, if the button triggers one |
+
+**Example automation:**
+```yaml
+action: wiser_by_feller.register_button
+data:
+  device: 0000a98f
+  channel: 1
+response_variable: registered
+```
+
+### `wiser_by_feller.unregister_button`
+Removes a registered button from the µGateway. It stops emitting button events and its LEDs are turned off. Requires µGateway firmware ≥ 6.0.42.
+
+**Parameters:**
+
+| Parameter         | Required | Type     | Description                                                                                              |
+|-------------------|----------|----------|--------------------------------------------------------------------------------------------------------|
+| `config_entry_id` |          | `string` | µGateway the button belongs to. Optional with a single µGateway; required when multiple are configured. |
+| `button_id`       | ✅        | `int`    | Button ID (from `find_button`)                                                                           |
+
+**Example automation:**
+```yaml
+action: wiser_by_feller.unregister_button
+data:
+  button_id: 43
 ```
 
 ### `wiser_by_feller.set_button_led_override`

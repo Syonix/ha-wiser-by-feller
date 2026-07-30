@@ -8,6 +8,7 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import device_registry as dr
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
+import voluptuous as vol
 
 from custom_components.wiser_by_feller import (
     async_remove_stale_devices,
@@ -17,6 +18,7 @@ from custom_components.wiser_by_feller.const import (
     CONF_IMPORTUSER,
     DOMAIN,
     IMPORT_USER_UNKNOWN,
+    MIN_FIRMWARE_MANAGED_BUTTONS,
 )
 
 # ── setup ────────────────────────────────────────────────────────────────────
@@ -213,6 +215,8 @@ async def test_unload_entry_keeps_services(hass, setup_integration):
     assert hass.services.has_service(DOMAIN, "set_button_led_override")
     assert hass.services.has_service(DOMAIN, "clear_button_led_override")
     assert hass.services.has_service(DOMAIN, "find_button")
+    assert hass.services.has_service(DOMAIN, "register_button")
+    assert hass.services.has_service(DOMAIN, "unregister_button")
 
 
 # ── find_button service ───────────────────────────────────────────────────────
@@ -269,7 +273,7 @@ async def test_find_button_managed_button_returns_no_note(
 async def test_find_button_unmanaged_button_raises(
     hass, setup_integration, mock_coordinator
 ):
-    """Unmanaged button raises a validation error pointing to the docs."""
+    """Unmanaged button raises a validation error naming device and channel."""
     mock_coordinator.async_find_button = AsyncMock(
         return_value={"button_id": None, "device": "00019edc", "channel": 0}
     )
@@ -279,6 +283,188 @@ async def test_find_button_unmanaged_button_raises(
         )
 
     assert exc.value.translation_key == "unmanaged_button"
+    assert exc.value.translation_placeholders == {"device": "00019edc", "channel": "0"}
+
+
+async def test_find_button_register_unmanaged_registers_and_resolves(
+    hass, setup_integration, mock_coordinator
+):
+    """With register_unmanaged, an unmanaged press registers the button in one flow."""
+    mock_coordinator.async_find_button = AsyncMock(
+        return_value={"button_id": None, "device": "00019edc", "channel": 0}
+    )
+    mock_coordinator.async_register_button = AsyncMock(
+        return_value=MagicMock(id=42, device="00019edc", channel=0)
+    )
+    mock_coordinator.resolve_managed_button_fields.return_value = _MANAGED_FIELDS
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        "find_button",
+        {"register_unmanaged": True},
+        blocking=True,
+        return_response=True,
+    )
+
+    mock_coordinator.async_register_button.assert_awaited_once_with("00019edc", 0)
+    assert response["button_id"] == 42
+    assert response["device"] == "00019edc"
+    assert response["channel"] == 0
+    assert response["room_name"] == "Living Room"
+
+
+async def test_find_button_register_unmanaged_firmware_checked_upfront(
+    hass, setup_integration, mock_coordinator
+):
+    """The managed-buttons firmware gate fails before find-me mode is started."""
+    mock_coordinator.supports_feature = MagicMock(
+        side_effect=lambda fw: fw != MIN_FIRMWARE_MANAGED_BUTTONS
+    )
+    mock_coordinator.async_find_button = AsyncMock()
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await hass.services.async_call(
+            DOMAIN,
+            "find_button",
+            {"register_unmanaged": True},
+            blocking=True,
+            return_response=True,
+        )
+
+    assert exc.value.translation_key == "firmware_too_old"
+    mock_coordinator.async_find_button.assert_not_awaited()
+
+
+async def test_find_button_managed_button_ignores_register_flag(
+    hass, setup_integration, mock_coordinator
+):
+    """A managed press with register_unmanaged set never triggers a registration."""
+    mock_coordinator.async_find_button = AsyncMock(
+        return_value={"button_id": 123, "device": "00019edc", "channel": 0}
+    )
+    mock_coordinator.async_register_button = AsyncMock()
+    mock_coordinator.resolve_managed_button_fields.return_value = _MANAGED_FIELDS
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        "find_button",
+        {"register_unmanaged": True},
+        blocking=True,
+        return_response=True,
+    )
+
+    assert response["button_id"] == 123
+    mock_coordinator.async_register_button.assert_not_awaited()
+
+
+# ── register_button / unregister_button services ─────────────────────────────
+
+
+async def test_register_button_service_is_registered(hass, setup_integration):
+    """register_button service is registered after setup."""
+    assert hass.services.has_service(DOMAIN, "register_button")
+
+
+async def test_unregister_button_service_is_registered(hass, setup_integration):
+    """unregister_button service is registered after setup."""
+    assert hass.services.has_service(DOMAIN, "unregister_button")
+
+
+async def test_register_button_returns_resolved_fields(
+    hass, setup_integration, mock_coordinator
+):
+    """register_button returns the new button id plus resolved display fields."""
+    mock_coordinator.async_register_button = AsyncMock(
+        return_value=MagicMock(id=7, device="00019edc", channel=1)
+    )
+    mock_coordinator.resolve_managed_button_fields.return_value = _MANAGED_FIELDS
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        "register_button",
+        {"device": "00019edc", "channel": 1},
+        blocking=True,
+        return_response=True,
+    )
+
+    mock_coordinator.async_register_button.assert_awaited_once_with("00019edc", 1)
+    assert response == {
+        "button_id": 7,
+        "device": "00019edc",
+        "channel": 1,
+        "room_name": "Living Room",
+        "device_name": "Dimmer Plus",
+        "scene_name": None,
+    }
+
+
+async def test_register_button_invalid_device_rejected(hass, setup_integration):
+    """A device reference that is not a hex string is rejected by the schema."""
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            "register_button",
+            {"device": "not hex!", "channel": 0},
+            blocking=True,
+        )
+
+
+async def test_register_button_firmware_too_old(
+    hass, setup_integration, mock_coordinator
+):
+    """register_button fails fast with a translated error on old firmware."""
+    mock_coordinator.supports_feature = MagicMock(return_value=False)
+    mock_coordinator.async_register_button = AsyncMock()
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await hass.services.async_call(
+            DOMAIN,
+            "register_button",
+            {"device": "00019edc", "channel": 0},
+            blocking=True,
+        )
+
+    assert exc.value.translation_key == "firmware_too_old"
+    mock_coordinator.async_register_button.assert_not_awaited()
+
+
+async def test_unregister_button_returns_deleted_button(
+    hass, setup_integration, mock_coordinator
+):
+    """unregister_button returns the id, device, and channel of the deleted button."""
+    mock_coordinator.async_unregister_button = AsyncMock(
+        return_value=MagicMock(id=7, device="00019edc", channel=1)
+    )
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        "unregister_button",
+        {"button_id": 7},
+        blocking=True,
+        return_response=True,
+    )
+
+    mock_coordinator.async_unregister_button.assert_awaited_once_with(7)
+    assert response == {"button_id": 7, "device": "00019edc", "channel": 1}
+
+
+async def test_unregister_button_firmware_too_old(
+    hass, setup_integration, mock_coordinator
+):
+    """unregister_button fails fast with a translated error on old firmware."""
+    mock_coordinator.supports_feature = MagicMock(return_value=False)
+    mock_coordinator.async_unregister_button = AsyncMock()
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await hass.services.async_call(
+            DOMAIN,
+            "unregister_button",
+            {"button_id": 7},
+            blocking=True,
+        )
+
+    assert exc.value.translation_key == "firmware_too_old"
+    mock_coordinator.async_unregister_button.assert_not_awaited()
 
 
 # ── set_button_led_override / clear_button_led_override error handling ────────

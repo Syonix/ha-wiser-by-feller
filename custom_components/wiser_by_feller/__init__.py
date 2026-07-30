@@ -26,6 +26,7 @@ from .const import (
     LED_OFF_COLOR,
     MANUFACTURER,
     MIN_FIRMWARE_BUTTON_LED_OVERRIDE,
+    MIN_FIRMWARE_MANAGED_BUTTONS,
 )
 from .coordinator import WiserCoordinator
 
@@ -45,11 +46,16 @@ SERVICE_STATUS_LIGHT = "status_light"
 SERVICE_SET_BUTTON_LED_OVERRIDE = "set_button_led_override"
 SERVICE_CLEAR_BUTTON_LED_OVERRIDE = "clear_button_led_override"
 SERVICE_FIND_BUTTON = "find_button"
+SERVICE_REGISTER_BUTTON = "register_button"
+SERVICE_UNREGISTER_BUTTON = "unregister_button"
 
 ATTR_BUTTON_ID = "button_id"
 ATTR_LED_INDEX = "led_index"
 ATTR_EFFECT = "effect"
 ATTR_CONFIG_ENTRY_ID = "config_entry_id"
+ATTR_DEVICE = "device"
+ATTR_CHANNEL = "channel"
+ATTR_REGISTER_UNMANAGED = "register_unmanaged"
 
 
 def rgb_tuple_to_hex(rgb: tuple[int, int, int]) -> str:
@@ -92,6 +98,22 @@ CLEAR_BUTTON_LED_OVERRIDE_SCHEMA = vol.Schema(
 FIND_BUTTON_SCHEMA = vol.Schema(
     {
         vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        vol.Optional(ATTR_REGISTER_UNMANAGED, default=False): cv.boolean,
+    }
+)
+
+REGISTER_BUTTON_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        vol.Required(ATTR_DEVICE): vol.All(cv.string, vol.Match(r"^[0-9a-fA-F]{1,8}$")),
+        vol.Required(ATTR_CHANNEL): cv.positive_int,
+    }
+)
+
+UNREGISTER_BUTTON_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        vol.Required(ATTR_BUTTON_ID): cv.positive_int,
     }
 )
 
@@ -227,6 +249,12 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         """Find a physical button by activating find-me mode."""
         coordinator = _resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
         _require_firmware(coordinator, MIN_FIRMWARE_BUTTON_LED_OVERRIDE)
+        register_unmanaged = call.data[ATTR_REGISTER_UNMANAGED]
+        if register_unmanaged:
+            # Fail fast so the user doesn't sit through the two-minute find-me
+            # flow only to hit the firmware error when registering.
+            _require_firmware(coordinator, MIN_FIRMWARE_MANAGED_BUTTONS)
+
         result = await coordinator.async_find_button()
 
         button_id = result.get("button_id")
@@ -235,15 +263,28 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         fields: dict = {"room_name": None, "device_name": None, "scene_name": None}
 
+        if (
+            button_id is None
+            and device is not None
+            and channel is not None
+            and register_unmanaged
+        ):
+            button = await coordinator.async_register_button(device, channel)
+            button_id = button.id
+
         if button_id is not None:
             fields = coordinator.resolve_managed_button_fields(button_id)
         elif device is not None:
             # The button exists physically but isn't managed by the gateway, so
             # there is nothing to control. Surface this as a validation error
-            # pointing the user to the documentation.
+            # naming the device and channel needed to register it.
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="unmanaged_button",
+                translation_placeholders={
+                    "device": str(device),
+                    "channel": str(channel),
+                },
             )
 
         return {
@@ -253,6 +294,34 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             "room_name": fields["room_name"],
             "device_name": fields["device_name"],
             "scene_name": fields["scene_name"],
+        }
+
+    async def async_register_button_service(call: ServiceCall) -> dict[str, Any]:
+        """Register an available (sleeping) button on the µGateway."""
+        coordinator = _resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
+        _require_firmware(coordinator, MIN_FIRMWARE_MANAGED_BUTTONS)
+        button = await coordinator.async_register_button(
+            call.data[ATTR_DEVICE], call.data[ATTR_CHANNEL]
+        )
+        fields = coordinator.resolve_managed_button_fields(button.id)
+        return {
+            "button_id": button.id,
+            "device": button.device,
+            "channel": button.channel,
+            "room_name": fields["room_name"],
+            "device_name": fields["device_name"],
+            "scene_name": fields["scene_name"],
+        }
+
+    async def async_unregister_button_service(call: ServiceCall) -> dict[str, Any]:
+        """Unregister (delete) a managed button from the µGateway."""
+        coordinator = _resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
+        _require_firmware(coordinator, MIN_FIRMWARE_MANAGED_BUTTONS)
+        button = await coordinator.async_unregister_button(call.data[ATTR_BUTTON_ID])
+        return {
+            "button_id": call.data[ATTR_BUTTON_ID],
+            "device": button.device,
+            "channel": button.channel,
         }
 
     hass.services.async_register(DOMAIN, SERVICE_STATUS_LIGHT, handle_status_light)
@@ -273,6 +342,20 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         SERVICE_FIND_BUTTON,
         async_find_button_service,
         schema=FIND_BUTTON_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_REGISTER_BUTTON,
+        async_register_button_service,
+        schema=REGISTER_BUTTON_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_UNREGISTER_BUTTON,
+        async_unregister_button_service,
+        schema=UNREGISTER_BUTTON_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
     return True

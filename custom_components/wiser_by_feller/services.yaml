@@ -142,3 +142,74 @@ find_button:
       selector:
         config_entry:
           integration: wiser_by_feller
+
+    register_unmanaged:
+      name: Register unmanaged button
+      description: >
+        If the pressed button is not yet registered on the µGateway, register it
+        automatically and return its new button ID. Requires µGateway firmware 6.0.42+.
+        Note that button management is a beta feature of the µGateway firmware —
+        only register buttons you actually need, as too many registered buttons
+        can slow the gateway down.
+      required: false
+      default: false
+      selector:
+        boolean:
+
+register_button:
+  name: Register Button
+  description: >
+    Register an available (sleeping) physical button on the µGateway so it gets
+    a button ID and starts emitting button events. Requires µGateway firmware 6.0.42+.
+    Note that button management is a beta feature of the µGateway firmware — only
+    register buttons you actually need, as too many registered buttons can slow
+    the gateway down.
+  fields:
+    config_entry_id:
+      name: µGateway
+      description: The µGateway to register the button on. Optional if you only have one; required when multiple µGateways are configured.
+      required: false
+      selector:
+        config_entry:
+          integration: wiser_by_feller
+
+    device:
+      name: Device
+      description: Gateway device reference (e.g. `0000a98f`). Use the Find Button service to discover it.
+      required: true
+      selector:
+        text:
+
+    channel:
+      name: Channel
+      description: Input channel of the button on the device.
+      required: true
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 7
+          mode: box
+
+unregister_button:
+  name: Unregister Button
+  description: >
+    Remove a registered button from the µGateway. It stops emitting button
+    events and its LEDs are turned off. Requires µGateway firmware 6.0.42+.
+  fields:
+    config_entry_id:
+      name: µGateway
+      description: The µGateway the button belongs to. Optional if you only have one; required when multiple µGateways are configured.
+      required: false
+      selector:
+        config_entry:
+          integration: wiser_by_feller
+
+    button_id:
+      name: Button ID
+      description: Wiser button ID. Use the Find Button service to discover it.
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box

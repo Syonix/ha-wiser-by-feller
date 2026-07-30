@@ -40,11 +40,13 @@ You need the `button_id` to write an automation. Two ways to get it:
 
 - **Settings → Developer Tools → Events:** listen to `wiser_by_feller_button_event` and
   press the physical button. The fired event shows the exact `button_id`,
-  `event` and `type` — ready to copy into your automation (only for managed buttons, see [LED Control documentation](docs/led-control.md#%EF%B8%8F-configuring-buttons-in-the-wiser-gateway) for details).
+  `event` and `type` — ready to copy into your automation (only for managed buttons, see [LED Control documentation](led-control.md#%EF%B8%8F-registering-buttons) for details).
 - **Find Button action:** call the `wiser_by_feller.find_button` action
   (Developer Tools → Actions). All button LEDs start flashing; press the one you
   want and the action returns its `button_id` (plus device, channel and label
-  info) so you can confirm exactly which physical button it is.
+  info) so you can confirm exactly which physical button it is. If the button is
+  not yet managed by the gateway, enable **Register unmanaged button**
+  (`register_unmanaged: true`) to register it in the same call.
 
 > [!NOTE]
 > Button ids are only unique per µGateway. If you run more than one gateway, and the same button ID is in use in both 

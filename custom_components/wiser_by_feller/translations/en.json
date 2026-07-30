@@ -3,61 +3,61 @@
     "flow_title": "{name}",
     "step": {
       "user": {
-        "title": "Connect Wiser by Feller \u00b5Gateway",
-        "description": "Enter the IP address of your \u00b5Gateway and click submit. The buttons should start to flash pink and purple. Press any of the flashing buttons on the \u00b5Gateway within 30 seconds to connect your Home Assistant instance. After that, depending on the amount and generation of devices in your Wiser network, the initial setup can take up to two minutes.",
+        "title": "Connect Wiser by Feller µGateway",
+        "description": "Enter the IP address of your µGateway and click submit. The buttons should start to flash pink and purple. Press any of the flashing buttons on the µGateway within 30 seconds to connect your Home Assistant instance. After that, depending on the amount and generation of devices in your Wiser network, the initial setup can take up to two minutes.",
         "data": {
           "host": "Host",
           "username": "Username",
           "import_user": "Import config from"
         },
         "data_description": {
-          "host": "The hostname or IP address of your \u00b5Gateway.",
+          "host": "The hostname or IP address of your µGateway.",
           "username": "The username to be used for the API. You can enter anything, however only one connection per username is possible. If you have multiple instances, use unique usernames.",
           "import_user": "The user to import existing Wiser configuration from (like scenes, rooms and load names). If you don't have any other systems using the API, you can choose between 'installer' (Wiser eSetup app) and 'admin' (Wiser Home app)."
         }
       },
       "reconfigure": {
-        "title": "Reconfigure Wiser by Feller \u00b5Gateway",
-        "description": "Update the connection details for your \u00b5Gateway. Press any flashing button on the device within 30 seconds to reconnect.",
+        "title": "Reconfigure Wiser by Feller µGateway",
+        "description": "Update the connection details for your µGateway. Press any flashing button on the device within 30 seconds to reconnect.",
         "data": {
           "host": "Host",
           "username": "Username",
           "import_user": "Import config from"
         },
         "data_description": {
-          "host": "The new hostname or IP address of your \u00b5Gateway.",
+          "host": "The new hostname or IP address of your µGateway.",
           "username": "The username to be used for the API.",
           "import_user": "The user to import existing Wiser configuration from."
         }
       },
       "reauth_confirm": {
-        "title": "Reconnect Wiser by Feller \u00b5Gateway",
-        "description": "Enter the IP address of your \u00b5Gateway and click submit. The buttons should start to flash pink and purple. Press any of the flashing buttons on the \u00b5Gateway within 30 seconds to connect your Home Assistant instance.",
+        "title": "Reconnect Wiser by Feller µGateway",
+        "description": "Enter the IP address of your µGateway and click submit. The buttons should start to flash pink and purple. Press any of the flashing buttons on the µGateway within 30 seconds to connect your Home Assistant instance.",
         "data": {
           "host": "Host",
           "username": "Username",
           "import_user": "Import config from"
         },
         "data_description": {
-          "host": "The hostname or IP address of your \u00b5Gateway.",
+          "host": "The hostname or IP address of your µGateway.",
           "username": "The username to be used for the API. You can enter anything, however only one connection per username is possible. If you have multiple instances, use unique usernames.",
           "import_user": "The user to import existing Wiser configuration from (like scenes, rooms and load names). If you don't have any other systems using the API, you can choose between 'installer' (Wiser eSetup app) and 'admin' (Wiser Home app)."
         }
       }
     },
     "abort": {
-      "all_configured": "All Wiser \u00b5Gateways are already configured",
+      "all_configured": "All Wiser µGateways are already configured",
       "already_configured": "Device is already configured",
       "already_in_progress": "Configuration flow is already in progress",
-      "no_gateways": "No Wiser \u00b5Gateways discovered",
-      "not_wiser_gateway": "The device you're trying to connect to is not a Wiser \u00b5Gateway. Are you sure you've entered the correct hostname or IP?",
-      "wrong_device": "The device at the new address has a different serial number. Use this flow only to update the address of the same \u00b5Gateway."
+      "no_gateways": "No Wiser µGateways discovered",
+      "not_wiser_gateway": "The device you're trying to connect to is not a Wiser µGateway. Are you sure you've entered the correct hostname or IP?",
+      "wrong_device": "The device at the new address has a different serial number. Use this flow only to update the address of the same µGateway."
     },
     "error": {
       "cannot_connect": "Failed to connect",
       "invalid_auth": "Authentication failed",
       "invalid_import_user": "Could not import information from this user. If you never connected to your system, use user 'installer' instead of 'admin'.",
-      "discover_timeout": "Unable to discover Wiser \u00b5Gateways",
+      "discover_timeout": "Unable to discover Wiser µGateways",
       "invalid_host": "Invalid hostname or IP address",
       "linking": "Unexpected error",
       "register_failed": "Failed to register, please try again",
@@ -224,7 +224,13 @@
       "message": "Multiple µGateways are configured. Select which one in the µGateway field."
     },
     "unmanaged_button": {
-      "message": "This button is unmanaged. See the LED Control documentation for more information: https://github.com/Syonix/ha-wiser-by-feller/blob/main/docs/led-control.md"
+      "message": "This button is not registered on the µGateway (device {device}, channel {channel}). Register it with the register_button service, or rerun Find Button with 'Register unmanaged button' enabled. See the LED Control documentation for more information: https://github.com/Syonix/ha-wiser-by-feller/blob/main/docs/led-control.md"
+    },
+    "button_register_failed": {
+      "message": "Failed to register button: {error}"
+    },
+    "button_unregister_failed": {
+      "message": "Failed to unregister button: {error}"
     },
     "firmware_too_old": {
       "message": "This feature requires µGateway firmware {min_version} or newer. Your gateway is running {current_version}."
@@ -315,6 +321,42 @@
         "config_entry_id": {
           "name": "µGateway",
           "description": "The µGateway to activate find-me mode on. Optional with a single gateway; required when multiple are configured."
+        },
+        "register_unmanaged": {
+          "name": "Register unmanaged button",
+          "description": "If the pressed button is not yet registered on the µGateway, register it automatically and return its new button ID. Requires µGateway firmware 6.0.42+. Note that button management is a beta feature of the µGateway firmware \u2014 only register buttons you actually need, as too many registered buttons can slow the gateway down."
+        }
+      }
+    },
+    "register_button": {
+      "name": "Register Button",
+      "description": "Registers any physical button on the µGateway so it gets a button ID and can be used for automations. Requires µGateway firmware 6.0.42+. Note that button management is a beta feature of the µGateway firmware \u2014 only register buttons you actually need, as too many registered buttons can slow the gateway down.",
+      "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "The µGateway to register the button on. Optional with a single gateway; required when multiple are configured."
+        },
+        "device": {
+          "name": "Device",
+          "description": "Gateway device reference (e.g. 0000a98f). Use the Find Button service to discover it."
+        },
+        "channel": {
+          "name": "Channel",
+          "description": "Input channel of the button on the device."
+        }
+      }
+    },
+    "unregister_button": {
+      "name": "Unregister Button",
+      "description": "Removes a registered button from the µGateway. It will stop emitting button events and linked automations stop working. Requires µGateway firmware 6.0.42+.",
+      "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "The µGateway the button belongs to. Optional with a single gateway; required when multiple are configured."
+        },
+        "button_id": {
+          "name": "Button ID",
+          "description": "Wiser button ID. Use the Find Button service to discover it."
         }
       }
     }
