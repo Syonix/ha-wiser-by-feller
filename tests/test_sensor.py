@@ -3,22 +3,43 @@
 from datetime import datetime
 from unittest.mock import MagicMock, patch
 
-from aiowiserbyfeller import Brightness, Device, Hail, Rain, Temperature, Wind
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from aiowiserbyfeller import (
+    Brightness,
+    Co2,
+    Device,
+    Hail,
+    Humidity,
+    Rain,
+    Temperature,
+    Wind,
+    Window,
+)
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import UnitOfSpeed, UnitOfTemperature
+from homeassistant.const import (
+    CONCENTRATION_PARTS_PER_MILLION,
+    PERCENTAGE,
+    UnitOfSpeed,
+    UnitOfTemperature,
+)
 from homeassistant.helpers import entity_registry as er
 
 from custom_components.wiser_by_feller.const import DOMAIN
 from custom_components.wiser_by_feller.coordinator import WiserCoordinator
 from custom_components.wiser_by_feller.sensor import (
     GW_SENSORS,
+    WiserCo2SensorEntity,
     WiserHailSensorEntity,
+    WiserHumiditySensorEntity,
     WiserIlluminanceSensorEntity,
     WiserLastRebootEntity,
     WiserRainSensorEntity,
     WiserSystemHealthEntity,
     WiserTemperatureSensorEntity,
+    WiserWindowSensorEntity,
     WiserWindSpeedSensorEntity,
 )
 
@@ -193,19 +214,6 @@ def test_ntc_temperature_sensor_unique_id_has_ntc_suffix():
     assert entity.unique_id == "0000a98f_16_ntc_temperature"
 
 
-def test_ntc_sub_type_read_from_raw_data():
-    """The 'sub_type' key from the API is used when the library returns None.
-
-    aiowiserbyfeller <= 2.2.1 reads the key 'subtype', while the µGateway API
-    returns 'sub_type'.
-    """
-    coord = _make_coordinator()
-    sensor = _make_sensor(Temperature, channel=16)
-    sensor.raw_data = {"sub_type": "ntc"}
-    entity = WiserTemperatureSensorEntity(coord, _make_device(), None, sensor)
-    assert entity.unique_id == "0000a98f_16_ntc_temperature"
-
-
 def test_ntc_temperature_sensor_translation_key():
     """NTC temperature sensor uses the ntc_temperature translation key."""
     coord = _make_coordinator()
@@ -251,6 +259,64 @@ def test_illuminance_sensor_native_value():
     sensor.value_brightness = 500
     entity = WiserIlluminanceSensorEntity(coord, _make_device(), None, sensor)
     assert entity.native_value == 500
+
+
+# ── WiserHumiditySensorEntity ─────────────────────────────────────────────────
+
+
+def test_humidity_sensor_device_class():
+    """Humidity sensor entity reports device_class HUMIDITY."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Humidity)
+    entity = WiserHumiditySensorEntity(coord, _make_device(), None, sensor)
+    assert entity.device_class == SensorDeviceClass.HUMIDITY
+
+
+def test_humidity_sensor_unit():
+    """Humidity sensor entity uses percentage as unit of measurement."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Humidity)
+    entity = WiserHumiditySensorEntity(coord, _make_device(), None, sensor)
+    assert entity.native_unit_of_measurement == PERCENTAGE
+
+
+def test_humidity_sensor_native_value():
+    """Humidity sensor entity native_value reads sensor.value_humidity."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Humidity, channel=1)
+    sensor.value_humidity = 55.2
+    entity = WiserHumiditySensorEntity(coord, _make_device(), None, sensor)
+    assert entity.native_value == 55.2
+    assert entity.unique_id == "0000a98f_1_humidity"
+
+
+# ── WiserCo2SensorEntity ──────────────────────────────────────────────────────
+
+
+def test_co2_sensor_device_class():
+    """CO2 sensor entity reports device_class CO2."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Co2)
+    entity = WiserCo2SensorEntity(coord, _make_device(), None, sensor)
+    assert entity.device_class == SensorDeviceClass.CO2
+
+
+def test_co2_sensor_unit():
+    """CO2 sensor entity uses ppm as unit of measurement."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Co2)
+    entity = WiserCo2SensorEntity(coord, _make_device(), None, sensor)
+    assert entity.native_unit_of_measurement == CONCENTRATION_PARTS_PER_MILLION
+
+
+def test_co2_sensor_native_value():
+    """CO2 sensor entity native_value reads sensor.value_co2."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Co2, channel=2)
+    sensor.value_co2 = 940
+    entity = WiserCo2SensorEntity(coord, _make_device(), None, sensor)
+    assert entity.native_value == 940
+    assert entity.unique_id == "0000a98f_2_co2"
 
 
 # ── WiserWindSpeedSensorEntity ────────────────────────────────────────────────
@@ -310,6 +376,27 @@ def test_hail_sensor_is_on():
     sensor.value_hail = False
     entity = WiserHailSensorEntity(coord, _make_device(), None, sensor)
     assert entity.is_on is False
+
+
+# ── WiserWindowSensorEntity ───────────────────────────────────────────────────
+
+
+def test_window_sensor_is_binary():
+    """Window sensor entity is a BinarySensorEntity with device_class WINDOW."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Window)
+    entity = WiserWindowSensorEntity(coord, _make_device(), None, sensor)
+    assert isinstance(entity, BinarySensorEntity)
+    assert entity.device_class == BinarySensorDeviceClass.WINDOW
+
+
+def test_window_sensor_is_on():
+    """Window sensor entity is_on reflects sensor.value_window."""
+    coord = _make_coordinator()
+    sensor = _make_sensor(Window)
+    sensor.value_window = True
+    entity = WiserWindowSensorEntity(coord, _make_device(), None, sensor)
+    assert entity.is_on is True
 
 
 # ── temperature sensor excluded when assigned to HVAC group ──────────────────

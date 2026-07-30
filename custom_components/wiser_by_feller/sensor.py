@@ -7,8 +7,22 @@ from dataclasses import dataclass
 from datetime import datetime
 import logging
 
-from aiowiserbyfeller import Brightness, Device, Hail, Rain, Sensor, Temperature, Wind
-from homeassistant.components.binary_sensor import BinarySensorEntity
+from aiowiserbyfeller import (
+    Brightness,
+    Co2,
+    Device,
+    Hail,
+    Humidity,
+    Rain,
+    Sensor,
+    Temperature,
+    Wind,
+    Window,
+)
+from homeassistant.components.binary_sensor import (
+    BinarySensorDeviceClass,
+    BinarySensorEntity,
+)
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -17,7 +31,9 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
+    CONCENTRATION_PARTS_PER_MILLION,
     LIGHT_LUX,
+    PERCENTAGE,
     SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     STATE_UNAVAILABLE,
     EntityCategory,
@@ -123,28 +139,25 @@ GW_SENSORS: tuple[GatewaySensorEntityDescription, ...] = (
 )
 
 
-def get_sensor_sub_type(sensor: Sensor) -> str | None:
-    """Return the subtype of a sensor.
-
-    aiowiserbyfeller <= 2.2.1 reads the key ``subtype``, while the µGateway
-    API returns ``sub_type``, so read the raw data as a fallback.
-    """
-    return sensor.sub_type or sensor.raw_data.get("sub_type") or None
-
-
 def get_sensor_unique_id_suffix(sensor: Sensor) -> str | None:
     """Return the unique ID suffix for a supported sensor."""
     if isinstance(sensor, Temperature):
-        prefix = "ntc_" if get_sensor_sub_type(sensor) == "ntc" else ""
+        prefix = "ntc_" if sensor.sub_type == "ntc" else ""
         return f"{prefix}temperature"
     if isinstance(sensor, Brightness):
         return "illuminance"
+    if isinstance(sensor, Humidity):
+        return "humidity"
+    if isinstance(sensor, Co2):
+        return "co2"
     if isinstance(sensor, Wind):
         return "wind_speed"
     if isinstance(sensor, Rain):
         return "rain"
     if isinstance(sensor, Hail):
         return "hail"
+    if isinstance(sensor, Window):
+        return "window"
     return None
 
 
@@ -254,7 +267,7 @@ async def async_setup_entry(
         if isinstance(sensor, Temperature):
             if (
                 sensor.device in coordinator.assigned_thermostats
-                and get_sensor_sub_type(sensor) != "ntc"
+                and sensor.sub_type != "ntc"
             ):
                 # The room temperature of a thermostat assigned to an HVAC group
                 # is already exposed via the climate entity. See climate.py.
@@ -268,6 +281,12 @@ async def async_setup_entry(
             entities.append(
                 WiserIlluminanceSensorEntity(coordinator, device, room, sensor)
             )
+        elif isinstance(sensor, Humidity):
+            entities.append(
+                WiserHumiditySensorEntity(coordinator, device, room, sensor)
+            )
+        elif isinstance(sensor, Co2):
+            entities.append(WiserCo2SensorEntity(coordinator, device, room, sensor))
         elif isinstance(sensor, Wind):
             entities.append(
                 WiserWindSpeedSensorEntity(coordinator, device, room, sensor)
@@ -276,6 +295,8 @@ async def async_setup_entry(
             entities.append(WiserRainSensorEntity(coordinator, device, room, sensor))
         elif isinstance(sensor, Hail):
             entities.append(WiserHailSensorEntity(coordinator, device, room, sensor))
+        elif isinstance(sensor, Window):
+            entities.append(WiserWindowSensorEntity(coordinator, device, room, sensor))
 
     if entities:
         async_add_entities(entities)
@@ -405,7 +426,7 @@ class WiserTemperatureSensorEntity(WiserSensorEntity, SensorEntity):
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_suggested_display_precision = 1
-        if get_sensor_sub_type(sensor) == "ntc":
+        if sensor.sub_type == "ntc":
             self._attr_translation_key = "ntc_temperature"
 
     @property
@@ -438,6 +459,48 @@ class WiserIlluminanceSensorEntity(WiserSensorEntity, SensorEntity):
     def native_unit_of_measurement(self) -> str | None:
         """Return the unit of illuminance."""
         return LIGHT_LUX
+
+
+class WiserHumiditySensorEntity(WiserSensorEntity, SensorEntity):
+    """A Wiser humidity sensor entity."""
+
+    def __init__(self, coordinator, device, room, sensor: Humidity):
+        """Set up the humidity sensor entity."""
+        super().__init__(coordinator, device, room, sensor)
+        self._attr_device_class = SensorDeviceClass.HUMIDITY
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_suggested_display_precision = 0
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the current relative humidity."""
+        return self._sensor.value_humidity
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of relative humidity."""
+        return PERCENTAGE
+
+
+class WiserCo2SensorEntity(WiserSensorEntity, SensorEntity):
+    """A Wiser CO2 sensor entity."""
+
+    def __init__(self, coordinator, device, room, sensor: Co2):
+        """Set up the CO2 sensor entity."""
+        super().__init__(coordinator, device, room, sensor)
+        self._attr_device_class = SensorDeviceClass.CO2
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_suggested_display_precision = 0
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the current CO2 concentration."""
+        return self._sensor.value_co2
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit of CO2 concentration."""
+        return CONCENTRATION_PARTS_PER_MILLION
 
 
 class WiserWindSpeedSensorEntity(WiserSensorEntity, SensorEntity):
@@ -487,3 +550,17 @@ class WiserHailSensorEntity(WiserSensorEntity, BinarySensorEntity):
     def is_on(self) -> bool | None:
         """Return the current hail state."""
         return self._sensor.value_hail
+
+
+class WiserWindowSensorEntity(WiserSensorEntity, BinarySensorEntity):
+    """A Wiser window sensor entity."""
+
+    def __init__(self, coordinator, device, room, sensor: Window):
+        """Set up the window sensor entity."""
+        super().__init__(coordinator, device, room, sensor)
+        self._attr_device_class = BinarySensorDeviceClass.WINDOW
+
+    @property
+    def is_on(self) -> bool | None:
+        """Return True if the window is open."""
+        return self._sensor.value_window
