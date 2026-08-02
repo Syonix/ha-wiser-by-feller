@@ -27,6 +27,7 @@ from .const import (
     MANUFACTURER,
     MIN_FIRMWARE_BUTTON_LED_OVERRIDE,
     MIN_FIRMWARE_MANAGED_BUTTONS,
+    MIN_FIRMWARE_STATUS_LIGHT_COLOR_OFF,
 )
 from .coordinator import WiserCoordinator
 
@@ -61,6 +62,7 @@ ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_DEVICE = "device"
 ATTR_CHANNEL = "channel"
 ATTR_REGISTER_UNMANAGED = "register_unmanaged"
+ATTR_COLOR_OFF = "color_off"
 ATTR_SYMBOL = "symbol"
 ATTR_VALUE = "value"
 ATTR_NAME = "name"
@@ -356,6 +358,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             entry = hass.config_entries.async_get_entry(entry_id)
             if entry and entry.domain == DOMAIN and entry.runtime_data is not None:
                 coordinator: WiserCoordinator = entry.runtime_data
+                if ATTR_COLOR_OFF in call.data:
+                    _require_firmware(coordinator, MIN_FIRMWARE_STATUS_LIGHT_COLOR_OFF)
                 await coordinator.async_set_status_light(call)
                 return
         raise ServiceValidationError(

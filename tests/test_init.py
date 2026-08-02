@@ -85,6 +85,73 @@ async def test_setup_entry_registers_status_light_service(hass, setup_integratio
     assert hass.services.has_service(DOMAIN, "status_light")
 
 
+# ── status_light firmware gate ───────────────────────────────────────────────
+
+
+def _status_light_data(hass, entry, **overrides):
+    """Build status_light call data targeting the gateway device."""
+    device = dr.async_get(hass).async_get_device({(DOMAIN, "20012161")})
+    assert device is not None
+    data = {
+        "device": device.id,
+        "channel": "0",
+        "color": [26, 188, 242],
+        "brightness_on": 100,
+    }
+    data.update(overrides)
+    return data
+
+
+async def test_status_light_color_off_requires_firmware(
+    hass, setup_integration, mock_coordinator
+):
+    """color_off needs µGateway firmware 6.0.41+ (foreground/background color)."""
+    mock_coordinator.supports_feature = MagicMock(return_value=False)
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await hass.services.async_call(
+            DOMAIN,
+            "status_light",
+            _status_light_data(hass, setup_integration, color_off=[0, 0, 0]),
+            blocking=True,
+        )
+
+    assert exc.value.translation_key == "firmware_too_old"
+    mock_coordinator.async_set_status_light.assert_not_awaited()
+
+
+async def test_status_light_without_color_off_ignores_firmware(
+    hass, setup_integration, mock_coordinator
+):
+    """A single color works on any firmware; the gate only covers color_off."""
+    mock_coordinator.supports_feature = MagicMock(return_value=False)
+
+    await hass.services.async_call(
+        DOMAIN,
+        "status_light",
+        _status_light_data(hass, setup_integration),
+        blocking=True,
+    )
+
+    mock_coordinator.async_set_status_light.assert_awaited_once()
+
+
+async def test_status_light_color_off_passes_on_supported_firmware(
+    hass, setup_integration, mock_coordinator
+):
+    """color_off is forwarded to the coordinator on firmware 6.0.41+."""
+    mock_coordinator.supports_feature = MagicMock(return_value=True)
+
+    await hass.services.async_call(
+        DOMAIN,
+        "status_light",
+        _status_light_data(hass, setup_integration, color_off=[0, 0, 0]),
+        blocking=True,
+    )
+
+    mock_coordinator.async_set_status_light.assert_awaited_once()
+
+
 # ── gateway registration ──────────────────────────────────────────────────────
 
 

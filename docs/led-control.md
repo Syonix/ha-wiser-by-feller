@@ -16,6 +16,9 @@ The first method modifies the LED configuration directly on the device, via the 
 
 By default, the same color is used for both states and only the brightness differs. You can optionally set a separate **color when off** (`color_off`) to use a different color while the load is off; when it is left unset, the on-state color is used for both states.
 
+> [!NOTE]
+> A separate off color requires µGateway firmware **≥ 6.0.41**, and the button device itself needs firmware **≥ 2.8.2-0** for it to take effect. Update device firmware with the Wiser Home or eSetup app.
+
 Secondary controls without loads mirror the LED state of their primary device. Scene buttons do not have an inherent on or off state, since scenes are triggered rather than toggled.
 
 > [!TIP]
@@ -107,7 +110,7 @@ Configures the device's status LED for a channel (see [⚙️ Device Configurati
 | `device`        | ✅        | `string`    | The target device (load, or scene / secondary control unit).                                                             |
 | `channel`       | ✅        | `"0"`–`"3"` | The button on the device to control.                                                                                     |
 | `color`         | ✅        | `[r, g, b]` | LED color as RGB values (0–255 each). Used while the load is on, and also while off unless `color_off` is set.            |
-| `color_off`     |          | `[r, g, b]` | LED color while the load is off. When unset, `color` is used for both states.                                            |
+| `color_off`     |          | `[r, g, b]` | LED color while the load is off. When unset, `color` is used for both states. Requires µGateway firmware ≥ 6.0.41 and device firmware ≥ 2.8.2-0. |
 | `brightness_on` | ✅        | `int`       | LED brightness while the load is on (0–100).                                                                             |
 | `brightness_off`|          | `int`       | LED brightness while the load is off (0–100). When unset, `brightness_on` is used.                                       |
 

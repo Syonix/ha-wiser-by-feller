@@ -257,8 +257,7 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
                 translation_placeholders={"channel": str(channel)},
             )
 
-        data = {
-            "color": rgb_tuple_to_hex(tuple(call.data["color"])),
+        data: dict[str, Any] = {
             "foreground_bri": call.data["brightness_on"],
             "background_bri": (
                 call.data["brightness_off"]
@@ -267,9 +266,14 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
             ),
         }
 
+        # A single color and the foreground/background color pair are mutually
+        # exclusive: sending "color" alongside the pair makes the device use it
+        # for both states and silently discards the off color.
         if "color_off" in call.data:
-            data["foreground_color"] = data["color"]
+            data["foreground_color"] = rgb_tuple_to_hex(tuple(call.data["color"]))
             data["background_color"] = rgb_tuple_to_hex(tuple(call.data["color_off"]))
+        else:
+            data["color"] = rgb_tuple_to_hex(tuple(call.data["color"]))
 
         try:
             config = await self._api.async_get_device_config(wdevice)

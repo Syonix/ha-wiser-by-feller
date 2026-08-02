@@ -12,6 +12,10 @@ OPTIONS_ALLOW_MISSING_GATEWAY_DATA = "allow_missing_gateway_data"
 HA_BLUE = "#1abcf2"
 LED_OFF_COLOR = "#000000"
 MIN_FIRMWARE_BUTTON_LED_OVERRIDE = (6, 0, 41)
+# foreground_color / background_color on the device input config. Note that
+# the physical device also needs firmware 2.8.2-0 or newer for it to take
+# effect (https://github.com/Feller-AG/wiser-api/blob/main/CHANGELOG.md).
+MIN_FIRMWARE_STATUS_LIGHT_COLOR_OFF = (6, 0, 41)
 MIN_FIRMWARE_MANAGED_BUTTONS = (6, 0, 42)
 MIN_FIRMWARE_REFRESH_PROPERTIES = (6, 0, 40)
 

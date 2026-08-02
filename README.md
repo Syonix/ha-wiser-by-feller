@@ -103,6 +103,11 @@ System flags are user-defined booleans on the µGateway that can be used in Wise
 ### 🧰 Housekeeping
 The integration automatically prompts you to re-connect if there is any authentication error.
 
+## 🛣️ Roadmap
+All planned features have been implemented 🎉
+
+Let me know if you are missing any functionality by [opening an issue](https://github.com/Syonix/ha-wiser-by-feller/issues/new?template=feature_request.yml).
+
 ## 🛟 Frequently asked questions
 ### Setup error `Invalid API response: Device 00012345 has an empty field c.comm_ref!`
 This is a known bug in the Wiser µGateway firmware. The integration will now offer to fix the issue with one click (requires µGateway firmware version 6.0.40 or newer).

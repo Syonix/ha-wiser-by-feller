@@ -889,8 +889,14 @@ async def test_set_status_light_without_color_off_omits_color_keys(
     assert "background_color" not in data
 
 
-async def test_set_status_light_with_color_off_sets_color_keys(coordinator, mock_api):
-    """With color_off, foreground/background colors are sent and `color` stays foreground."""
+async def test_set_status_light_with_color_off_omits_single_color(
+    coordinator, mock_api
+):
+    """With color_off, only the foreground/background pair is sent.
+
+    The µGateway web UI patches either "color" or the color pair, never both:
+    sending "color" alongside makes the device use it for both states.
+    """
     device = _prepare_status_light(coordinator, mock_api)
 
     with patch("custom_components.wiser_by_feller.coordinator.dr.async_get") as mock_dr:
@@ -900,7 +906,7 @@ async def test_set_status_light_with_color_off_sets_color_keys(coordinator, mock
         )
 
     _, _, data = mock_api.async_set_device_input_config.call_args.args
-    assert data["color"] == "#1abcf2"
+    assert "color" not in data
     assert data["foreground_color"] == "#1abcf2"
     assert data["background_color"] == "#000000"
 
