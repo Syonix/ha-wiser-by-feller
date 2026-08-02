@@ -1,6 +1,6 @@
 # 🚩 System Flags
 
-System flags are user-defined booleans stored on the µGateway. They can be used in Wiser jobs and conditions — the classic example is a **holiday mode** that automations and schedules can react to. Each flag has:
+System flags are user-defined booleans stored on the µGateway. They can be used in Wiser jobs and conditions, for example a **holiday mode** that automations and schedules can react to. Each flag has:
 
 | Property | Description                                                                                          |
 |----------|------------------------------------------------------------------------------------------------------|
@@ -14,6 +14,29 @@ Since neither the Wiser apps nor the gateway web UI offer flag management, the i
 
 > [!WARNING]
 > Do not delete or change the symbol of the flags **`vacation`** or **`present`** (legacy): they are created by the Wiser Home app for its vacation mode, and the app's presence simulation references them by symbol via a system condition ([details](https://github.com/Feller-AG/wiser-api/issues/36)). If you deleted the `vacation` flag by accident, recreate one with the same symbol to restore the app's vacation mode.
+
+## 🤝 Shared state between Wiser and Home Assistant
+
+Unlike a Home Assistant `input_boolean`, a system flag can be read by **both systems**. Home Assistant flips the switch entity, and the Wiser system reacts on its own, without an automation and even while Home Assistant is down.
+
+Wiser uses flags in two places:
+
+- **Conditions** (`/api/system/conditions`) are named boolean expressions over flag symbols, e.g. `not vacation`. Their value is recalculated by the gateway whenever a flag changes.
+- **Jobs** (what scenes, timers and scene buttons actually run) have an optional **`blocked_by`** property holding the id of a flag or a condition. While that flag or condition evaluates to **true**, the gateway refuses to run the job.
+
+So `blocked_by` disables a scene or timer on the gateway itself, and the flag behind it is something Home Assistant can set. A few examples:
+
+- A `window_open` flag, set from your window contacts, blocking the heating scenes.
+- A `guests` flag blocking the presence simulation timers.
+- A `cleaning` flag blocking the motion-triggered "lights out" job for an hour.
+
+The Wiser Home app uses this mechanism for its vacation mode: it keeps a `vacation` flag plus a condition `not vacation`, and points the presence simulation timers at that condition, so they run only while vacation mode is on ([details](https://github.com/Feller-AG/wiser-api/issues/36)).
+
+> [!NOTE]
+> This integration manages flags, but not conditions or `blocked_by`. Those are set through the API or by your installer. So the typical setup is: create the flag here, set `blocked_by` once with a REST client, then flip the flag from Home Assistant.
+
+> [!TIP]
+> Beware of the double negative. `blocked_by` blocks while the value is **true**, so a job that should run only while a flag is set needs a condition that inverts it (`not my_flag`), which is why the app's condition is called `vacation` but reads `not vacation`.
 
 ## 📋 Action Reference
 
@@ -82,9 +105,12 @@ Scene buttons have no inherent on or off state, so their frontset LED normally s
 - The buttons' frontset LEDs show the **"on" configuration** (see [LED Control → Device Configuration](led-control.md#%EF%B8%8F-device-configuration)) while the flag matches the assigned value, and the "off" configuration otherwise.
 - **Triggering the scene sets the flag** to the assigned value — by wall button and by Home Assistant scene entity alike.
 
-The assignment is stored on the gateway (in the scene's job), so it survives restarts and works without Home Assistant running.
+The assignment is stored on the gateway (in the scene's job), so it survives restarts and works without Home Assistant running. It also means the button **must** trigger a Wiser scene — a button without one has no job to bind the flag to, and this integration cannot create scenes or jobs.
 
-For a toggle-style setup like holiday mode, create two scenes: one that assigns the flag with value `true` ("activate holiday mode", LED lit while active) and one with value `false` ("deactivate").
+Assigned values are absolute: a scene can set a flag to `true` or to `false`, never toggle it. For a toggle-style setup like holiday mode, create two scenes: one that assigns the flag with value `true` ("activate holiday mode", LED lit while active) and one with value `false` ("deactivate").
+
+> [!TIP]
+> A flag can also be driven entirely from Home Assistant — for example to make a scene button's LED follow a Hue lamp. See [Control a non-Wiser light with a Wiser button](use-cases.md#%EF%B8%8F-control-a-non-wiser-light-with-a-wiser-button).
 
 ### `wiser_by_feller.assign_scene_flag`
 Assigns a system flag value to a Wiser scene. Both entities must belong to the same µGateway. Re-assigning an already assigned flag replaces its value.

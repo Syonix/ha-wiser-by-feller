@@ -96,3 +96,7 @@ automation:
 > Only the `event_data` fields you list have to match. Match `button_id` alone to
 > react to *any* press of a button, then add `event` (and `type` for direction)
 > to narrow it down.
+
+> [!TIP]
+> To also make the button's LED reflect the state of the light it controls, see
+> [Control a non-Wiser light with a Wiser button](use-cases.md#%EF%B8%8F-control-a-non-wiser-light-with-a-wiser-button).

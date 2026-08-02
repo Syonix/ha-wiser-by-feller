@@ -53,6 +53,9 @@ Once you have a button ID, use the **override LED** service to set the LED state
 ### ↩️ Clearing Overrides
 The **clear LED** service reverts an overridden LED back to its configured state. For example, if you previously configured a button to red with 50% brightness via device configuration, then used the override service to set it to blue at full brightness, calling clear returns it to the original red at 50% brightness.
 
+> [!TIP]
+> Combining override and clear is how you make a button LED follow the state of a non-Wiser light — see [Control a non-Wiser light with a Wiser button](use-cases.md#%EF%B8%8F-control-a-non-wiser-light-with-a-wiser-button).
+
 ### 🛠️ Registering Buttons
 
 > [!NOTE]

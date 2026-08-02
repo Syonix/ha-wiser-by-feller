@@ -100,6 +100,9 @@ Physical button presses fire a Home Assistant event you can use in automations (
 ### 🚩 System Flags
 System flags are user-defined booleans on the µGateway that can be used in Wiser jobs and conditions (e.g. a holiday mode). They appear as switches in Home Assistant, and the integration provides actions to create, rename and delete them, as well as to assign them to Wiser scenes so scene button LEDs reflect the flag state. For detailed information, see the [System Flags documentation](docs/system-flags.md).
 
+### 🧩 Use Cases
+Recipes that combine several features into something useful: toggling a non-Wiser light (e.g. a Hue lamp) with a Wiser button including LED feedback, turning button LEDs into a status display, night orientation lighting, long-press and double-tap gestures, weather-aware shading and a garage door that shows whether it's open. See the [Use Cases documentation](docs/use-cases.md).
+
 ### 🧰 Housekeeping
 The integration automatically prompts you to re-connect if there is any authentication error.
 
