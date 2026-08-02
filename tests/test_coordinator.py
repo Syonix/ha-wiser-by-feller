@@ -7,8 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from aiowiserbyfeller import (
     AuthorizationFailed,
     Button,
+    Job,
     Load,
     Sensor,
+    SystemFlag,
     UnauthorizedUser,
     UnsuccessfulRequest,
 )
@@ -327,6 +329,37 @@ def test_ws_update_data_hvacgroup_updates_states(coordinator):
     assert coordinator._states[10] == hvac_state
 
 
+def test_ws_update_data_flag_updates_existing_flag(coordinator):
+    """WebSocket 'flag' event updates the cached flag object and notifies."""
+    flag = SystemFlag(
+        {"id": 152, "symbol": "warning", "value": False, "name": "Warnung"},
+        MagicMock(),
+    )
+    coordinator._states = {}
+    coordinator._system_flags = [flag]
+
+    with patch.object(coordinator, "async_set_updated_data") as mock_update:
+        coordinator.ws_update_data(
+            {"flag": {"id": 152, "symbol": "warning", "value": True, "name": "Warnung"}}
+        )
+
+    assert flag.value is True
+    mock_update.assert_called_once()
+
+
+def test_ws_update_data_flag_adds_unknown_flag(coordinator):
+    """WebSocket 'flag' event for an unknown flag adds it to the cache."""
+    coordinator._states = {}
+    coordinator._system_flags = []
+
+    with patch.object(coordinator, "async_set_updated_data") as mock_update:
+        coordinator.ws_update_data({"flag": {"id": 5, "symbol": "new", "value": True}})
+
+    assert len(coordinator._system_flags) == 1
+    assert coordinator._system_flags[0].id == 5
+    mock_update.assert_called_once()
+
+
 def test_ws_update_data_button_fires_bus_event(coordinator):
     """WebSocket 'button' event is fired on the bus and does not touch state."""
     coordinator._states = {}
@@ -602,6 +635,188 @@ async def test_unregister_button_api_error_raises_translated(coordinator, mock_a
     assert exc.value.translation_key == "button_unregister_failed"
     assert exc.value.translation_placeholders == {"error": "api not found"}
     mock_api.async_get_managed_buttons.assert_not_awaited()
+
+
+# ── system flag mutations ─────────────────────────────────────────────────────
+
+
+def _make_system_flag(flag_id=3, symbol="holiday", value=False, name=None):
+    raw = {"id": flag_id, "symbol": symbol, "value": value}
+    if name is not None:
+        raw["name"] = name
+    return SystemFlag(raw, MagicMock())
+
+
+async def test_create_system_flag_posts_payload_and_refreshes(coordinator, mock_api):
+    """Creating a flag posts the payload, refreshes the cache and notifies."""
+    created = _make_system_flag(flag_id=5, symbol="holiday")
+    mock_api.async_create_system_flag = AsyncMock(return_value=created)
+    mock_api.async_get_system_flags = AsyncMock(return_value=[created])
+
+    with patch.object(coordinator, "async_set_updated_data") as mock_notify:
+        result = await coordinator.async_create_system_flag("holiday")
+
+    payload = mock_api.async_create_system_flag.await_args.args[0]
+    assert payload.raw_data == {"symbol": "holiday", "value": False}
+    mock_api.async_get_system_flags.assert_awaited_once()
+    mock_notify.assert_called_once()
+    assert result is created
+
+
+async def test_create_system_flag_includes_optional_name(coordinator, mock_api):
+    """A provided name and initial value are included in the POST payload."""
+    created = _make_system_flag(flag_id=5, symbol="holiday", value=True, name="Holiday")
+    mock_api.async_create_system_flag = AsyncMock(return_value=created)
+    mock_api.async_get_system_flags = AsyncMock(return_value=[created])
+
+    with patch.object(coordinator, "async_set_updated_data"):
+        await coordinator.async_create_system_flag(
+            "holiday", value=True, name="Holiday"
+        )
+
+    payload = mock_api.async_create_system_flag.await_args.args[0]
+    assert payload.raw_data == {"symbol": "holiday", "value": True, "name": "Holiday"}
+
+
+async def test_create_system_flag_api_error_raises_translated(coordinator, mock_api):
+    """An API error during creation maps to a translated validation error."""
+    mock_api.async_create_system_flag = AsyncMock(
+        side_effect=UnsuccessfulRequest("symbol already exists")
+    )
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await coordinator.async_create_system_flag("holiday")
+
+    assert exc.value.translation_key == "system_flag_create_failed"
+    assert exc.value.translation_placeholders == {"error": "symbol already exists"}
+    mock_api.async_get_system_flags.assert_not_awaited()
+
+
+async def test_update_system_flag_sends_partial_patch(coordinator, mock_api):
+    """Only the provided keys are patched; the PATCH response is returned."""
+    raw = {"id": 3, "symbol": "holiday", "value": False, "name": "Holiday"}
+    mock_api.async_patch_system_flag = AsyncMock(return_value=raw)
+    mock_api.async_get_system_flags = AsyncMock(return_value=[])
+
+    with patch.object(coordinator, "async_set_updated_data") as mock_notify:
+        result = await coordinator.async_update_system_flag(3, name="Holiday")
+
+    mock_api.async_patch_system_flag.assert_awaited_once_with(3, {"name": "Holiday"})
+    mock_notify.assert_called_once()
+    assert result.raw_data == raw
+
+
+async def test_update_system_flag_api_error_raises_translated(coordinator, mock_api):
+    """An API error during update maps to a translated validation error."""
+    mock_api.async_patch_system_flag = AsyncMock(
+        side_effect=UnsuccessfulRequest("api not found")
+    )
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await coordinator.async_update_system_flag(3, name="x")
+
+    assert exc.value.translation_key == "system_flag_update_failed"
+
+
+async def test_delete_system_flag_calls_api_and_refreshes(coordinator, mock_api):
+    """Deleting a flag calls the API, refreshes the cache and notifies."""
+    deleted = _make_system_flag(flag_id=3)
+    mock_api.async_delete_system_flag = AsyncMock(return_value=deleted)
+    mock_api.async_get_system_flags = AsyncMock(return_value=[])
+
+    with patch.object(coordinator, "async_set_updated_data") as mock_notify:
+        result = await coordinator.async_delete_system_flag(3)
+
+    mock_api.async_delete_system_flag.assert_awaited_once_with(3)
+    mock_api.async_get_system_flags.assert_awaited_once()
+    mock_notify.assert_called_once()
+    assert result is deleted
+
+
+async def test_delete_system_flag_api_error_raises_translated(coordinator, mock_api):
+    """An API error during deletion maps to a translated validation error."""
+    mock_api.async_delete_system_flag = AsyncMock(
+        side_effect=UnsuccessfulRequest("api not found")
+    )
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await coordinator.async_delete_system_flag(3)
+
+    assert exc.value.translation_key == "system_flag_delete_failed"
+
+
+# ── scene flag assignment ─────────────────────────────────────────────────────
+
+
+def _mock_job_api(mock_api, job_id=100, flag_values=None):
+    """Wire job get/update mocks; return the dict capturing the PUT payload."""
+    job = Job({"id": job_id, "flag_values": flag_values or []}, MagicMock())
+    mock_api.async_get_job = AsyncMock(return_value=job)
+    put_payload = {}
+
+    async def _update_job(updated):
+        put_payload.update(updated.raw_data)
+        return updated
+
+    mock_api.async_update_job = AsyncMock(side_effect=_update_job)
+    return put_payload
+
+
+async def test_assign_scene_flag_adds_flag_value(coordinator, mock_api):
+    """Assigning adds the flag value to the job and refreshes the job cache."""
+    put_payload = _mock_job_api(mock_api, flag_values=[{"flag": 1, "value": False}])
+
+    result = await coordinator.async_assign_scene_flag(100, 2, True)
+
+    assert put_payload["flag_values"] == [
+        {"flag": 1, "value": False},
+        {"flag": 2, "value": True},
+    ]
+    mock_api.async_get_jobs.assert_awaited_once()
+    assert {"flag": 2, "value": True} in result
+
+
+async def test_assign_scene_flag_replaces_existing_value(coordinator, mock_api):
+    """Re-assigning an already assigned flag replaces its value instead of duplicating."""
+    put_payload = _mock_job_api(mock_api, flag_values=[{"flag": 2, "value": True}])
+
+    await coordinator.async_assign_scene_flag(100, 2, False)
+
+    assert put_payload["flag_values"] == [{"flag": 2, "value": False}]
+
+
+async def test_assign_scene_flag_api_error_raises_translated(coordinator, mock_api):
+    """An API error during assignment maps to a translated validation error."""
+    mock_api.async_get_job = AsyncMock(side_effect=UnsuccessfulRequest("api not found"))
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await coordinator.async_assign_scene_flag(100, 2, True)
+
+    assert exc.value.translation_key == "scene_flag_assign_failed"
+
+
+async def test_unassign_scene_flag_removes_flag_value(coordinator, mock_api):
+    """Unassigning removes the flag value from the job."""
+    put_payload = _mock_job_api(
+        mock_api,
+        flag_values=[{"flag": 1, "value": False}, {"flag": 2, "value": True}],
+    )
+
+    result = await coordinator.async_unassign_scene_flag(100, 2)
+
+    assert put_payload["flag_values"] == [{"flag": 1, "value": False}]
+    assert result == [{"flag": 1, "value": False}]
+
+
+async def test_unassign_scene_flag_not_assigned_raises(coordinator, mock_api):
+    """Unassigning a flag that is not assigned raises a clear error."""
+    _mock_job_api(mock_api, flag_values=[{"flag": 1, "value": False}])
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await coordinator.async_unassign_scene_flag(100, 2)
+
+    assert exc.value.translation_key == "scene_flag_not_assigned"
+    mock_api.async_update_job.assert_not_awaited()
 
 
 async def test_ws_idle_logs_warning_once(coordinator, mock_api, caplog):

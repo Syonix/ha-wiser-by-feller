@@ -405,6 +405,120 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
         await self.async_update_managed_buttons()
         return button
 
+    async def async_create_system_flag(
+        self, symbol: str, value: bool = False, name: str | None = None
+    ) -> SystemFlag:
+        """Create a new system flag on the µGateway."""
+        data: dict[str, Any] = {"symbol": symbol, "value": value}
+        if name is not None:
+            data["name"] = name
+
+        try:
+            created = await self._api.async_create_system_flag(
+                SystemFlag(data, self._api.auth)
+            )
+        except UnsuccessfulRequest as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="system_flag_create_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+
+        await self.async_update_system_flags()
+        self.async_set_updated_data(None)
+        return created
+
+    async def async_update_system_flag(
+        self, flag_id: int, symbol: str | None = None, name: str | None = None
+    ) -> SystemFlag:
+        """Update metadata of an existing system flag on the µGateway.
+
+        Not to be confused with async_update_system_flags, which refreshes the
+        flag cache from the µGateway.
+        """
+        patch: dict[str, Any] = {}
+        if symbol is not None:
+            patch["symbol"] = symbol
+        if name is not None:
+            patch["name"] = name
+
+        try:
+            returned = await self._api.async_patch_system_flag(flag_id, patch)
+        except UnsuccessfulRequest as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="system_flag_update_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+
+        await self.async_update_system_flags()
+        self.async_set_updated_data(None)
+        return SystemFlag(returned, self._api.auth)
+
+    async def async_assign_scene_flag(
+        self, job_id: int, flag_id: int, value: bool
+    ) -> list[dict]:
+        """Assign a system flag value to a scene job on the µGateway.
+
+        Smart buttons triggering the job light their frontset LED with the
+        "on" configuration while the flag matches the assigned value, and
+        running the job sets the flag to that value.
+        """
+        try:
+            job = await self._api.async_get_job(job_id)
+            flag_values = [fv for fv in job.flag_values if fv.get("flag") != flag_id]
+            flag_values.append({"flag": flag_id, "value": value})
+            updated = await self._api.async_update_job(
+                Job({"id": job_id, "flag_values": flag_values}, self._api.auth)
+            )
+        except UnsuccessfulRequest as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="scene_flag_assign_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+
+        await self.async_update_jobs()
+        return updated.flag_values
+
+    async def async_unassign_scene_flag(self, job_id: int, flag_id: int) -> list[dict]:
+        """Remove a system flag assignment from a scene job on the µGateway."""
+        try:
+            job = await self._api.async_get_job(job_id)
+            flag_values = [fv for fv in job.flag_values if fv.get("flag") != flag_id]
+            if len(flag_values) == len(job.flag_values):
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="scene_flag_not_assigned",
+                )
+            updated = await self._api.async_update_job(
+                Job({"id": job_id, "flag_values": flag_values}, self._api.auth)
+            )
+        except UnsuccessfulRequest as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="scene_flag_unassign_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+
+        await self.async_update_jobs()
+        return updated.flag_values
+
+    async def async_delete_system_flag(self, flag_id: int) -> SystemFlag:
+        """Delete an existing system flag from the µGateway."""
+        try:
+            deleted = await self._api.async_delete_system_flag(flag_id)
+        except UnsuccessfulRequest as err:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="system_flag_delete_failed",
+                translation_placeholders={"error": str(err)},
+            ) from err
+
+        await self.async_update_system_flags()
+        self.async_set_updated_data(None)
+        return deleted
+
     def resolve_managed_button_fields(self, button_id: int) -> dict:
         """Return structured display fields for a managed button."""
         empty: dict = {"room_name": None, "device_name": None, "scene_name": None}
@@ -583,6 +697,19 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
                 "Websocket hvacgroup data update received: %s", data["hvacgroup"]
             )
             self._states[data["hvacgroup"]["id"]] = data["hvacgroup"]["state"]
+        elif "flag" in data:
+            _LOGGER.debug("Websocket flag data update received: %s", data["flag"])
+            flag_data = data["flag"]
+            flag = next(
+                (f for f in self._system_flags or [] if f.id == flag_data.get("id")),
+                None,
+            )
+            if flag is not None:
+                flag.raw_data = flag_data
+            elif self._system_flags is not None:
+                # A flag created outside Home Assistant — add it so its entity
+                # appears without waiting for the next poll.
+                self._system_flags.append(SystemFlag(flag_data, self._api.auth))
         elif "westgroup" in data:
             # This would probably send updates when Wiser WEST group events happen, e.g. when a cover
             # is retracted due to a wind or rain event. Data updates are handled in the sensor domain

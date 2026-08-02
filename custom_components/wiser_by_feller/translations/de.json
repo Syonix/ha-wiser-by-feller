@@ -240,6 +240,33 @@
     },
     "device_firmware_too_old": {
       "message": "Das µGateway hat die Anfrage akzeptiert, aber die Firmware des Taster-Gerätes ist zu alt für die temporäre LED-Beleuchtung. Das ist die Firmware des Tasters bzw. der Bedienaufsatz-Einheit selbst, nicht die des µGateways. Aktualisiere das betroffene Gerät mit der Wiser Home oder eSetup App und versuche es erneut."
+    },
+    "system_flag_create_failed": {
+      "message": "Systemflag konnte nicht erstellt werden: {error}"
+    },
+    "system_flag_update_failed": {
+      "message": "Systemflag konnte nicht aktualisiert werden: {error}"
+    },
+    "system_flag_delete_failed": {
+      "message": "Systemflag konnte nicht gelöscht werden: {error}"
+    },
+    "not_a_system_flag": {
+      "message": "{entity_id} ist kein Wiser-Systemflag-Schalter."
+    },
+    "not_a_wiser_scene": {
+      "message": "{entity_id} ist keine Wiser-Szene."
+    },
+    "not_same_gateway": {
+      "message": "Die Szene und das Systemflag müssen zum selben µGateway gehören."
+    },
+    "scene_flag_assign_failed": {
+      "message": "Systemflag konnte der Szene nicht zugewiesen werden: {error}"
+    },
+    "scene_flag_unassign_failed": {
+      "message": "Systemflag-Zuweisung konnte nicht von der Szene entfernt werden: {error}"
+    },
+    "scene_flag_not_assigned": {
+      "message": "Dieses Systemflag ist der Szene nicht zugewiesen."
     }
   },
   "services": {
@@ -360,6 +387,88 @@
         "button_id": {
           "name": "Tasten-ID",
           "description": "Wiser-Tasten-ID. Verwende den Dienst \"Taste finden\", um sie zu ermitteln."
+        }
+      }
+    },
+    "create_system_flag": {
+      "name": "Systemflag erstellen",
+      "description": "Erstellt ein neues Systemflag auf dem µGateway. Systemflags sind benutzerdefinierte Wahrheitswerte, die in Wiser-Jobs und -Bedingungen verwendet werden können (z. B. ein Ferienmodus) und in Home Assistant als Schalter-Entitäten erscheinen.",
+      "fields": {
+        "config_entry_id": {
+          "name": "µGateway",
+          "description": "Das µGateway, auf dem das Flag erstellt wird. Optional bei einem einzelnen Gateway; erforderlich, wenn mehrere konfiguriert sind."
+        },
+        "symbol": {
+          "name": "Symbol",
+          "description": "Technischer Bezeichner, der in Wiser-Jobs und -Bedingungen verwendet wird. Nur Buchstaben, Ziffern und Unterstriche sind erlaubt (z. B. `holiday_mode`)."
+        },
+        "value": {
+          "name": "Anfangswert",
+          "description": "Anfangszustand des Flags."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Optionaler menschenlesbarer Name, der in Home Assistant und den Wiser-Apps angezeigt wird."
+        }
+      }
+    },
+    "update_system_flag": {
+      "name": "Systemflag aktualisieren",
+      "description": "Benennt ein bestehendes Systemflag um oder ändert sein Symbol. Gib mindestens eines der beiden an. Um den Zustand des Flags zu ändern, schalte einfach seine Schalter-Entität um.",
+      "fields": {
+        "entity_id": {
+          "name": "Systemflag",
+          "description": "Die Schalter-Entität des Systemflags."
+        },
+        "symbol": {
+          "name": "Symbol",
+          "description": "Neuer technischer Bezeichner. Nur Buchstaben, Ziffern und Unterstriche sind erlaubt. Achtung — Wiser-Jobs und -Bedingungen referenzieren das Flag über sein Symbol."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Neuer menschenlesbarer Name, der in Home Assistant und den Wiser-Apps angezeigt wird."
+        }
+      }
+    },
+    "delete_system_flag": {
+      "name": "Systemflag löschen",
+      "description": "Löscht ein Systemflag vom µGateway. Wiser-Jobs und -Bedingungen, die das Flag referenzieren, funktionieren danach nicht mehr, und die Schalter-Entität wird aus Home Assistant entfernt.",
+      "fields": {
+        "entity_id": {
+          "name": "Systemflag",
+          "description": "Die Schalter-Entität des Systemflags."
+        }
+      }
+    },
+    "assign_scene_flag": {
+      "name": "Szenenflag zuweisen",
+      "description": "Weist einer Wiser-Szene einen Systemflag-Wert zu. Die Frontset-LEDs der Szenentasten leuchten im konfigurierten \"Ein\"-Zustand, solange das Flag dem zugewiesenen Wert entspricht, und das Auslösen der Szene setzt das Flag auf diesen Wert.",
+      "fields": {
+        "scene_entity_id": {
+          "name": "Szene",
+          "description": "Die Wiser-Szenen-Entität."
+        },
+        "flag_entity_id": {
+          "name": "Systemflag",
+          "description": "Die Schalter-Entität des Systemflags."
+        },
+        "value": {
+          "name": "Wert",
+          "description": "Flag-Wert, den die Szene beim Auslösen setzt — die LEDs der Tasten zeigen den \"Ein\"-Zustand, solange das Flag diesen Wert hat."
+        }
+      }
+    },
+    "unassign_scene_flag": {
+      "name": "Szenenflag-Zuweisung entfernen",
+      "description": "Entfernt eine Systemflag-Zuweisung von einer Wiser-Szene. Die LEDs der Szenentasten folgen dem Flag nicht mehr, und das Auslösen der Szene setzt es nicht mehr.",
+      "fields": {
+        "scene_entity_id": {
+          "name": "Szene",
+          "description": "Die Wiser-Szenen-Entität."
+        },
+        "flag_entity_id": {
+          "name": "Systemflag",
+          "description": "Die Schalter-Entität des Systemflags."
         }
       }
     }

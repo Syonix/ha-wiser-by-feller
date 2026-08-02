@@ -213,3 +213,149 @@ unregister_button:
         number:
           min: 0
           mode: box
+
+create_system_flag:
+  name: Create System Flag
+  description: >
+    Create a new system flag on the µGateway. System flags are user-defined
+    booleans that can be used in Wiser jobs and conditions (e.g. a holiday
+    mode) and appear as switch entities in Home Assistant.
+  fields:
+    config_entry_id:
+      name: µGateway
+      description: The µGateway to create the flag on. Optional if you only have one; required when multiple µGateways are configured.
+      required: false
+      selector:
+        config_entry:
+          integration: wiser_by_feller
+
+    symbol:
+      name: Symbol
+      description: Technical identifier used in Wiser jobs and conditions. Only letters, digits and underscores are allowed (e.g. `holiday_mode`).
+      required: true
+      selector:
+        text:
+
+    value:
+      name: Initial value
+      description: Initial state of the flag.
+      required: false
+      default: false
+      selector:
+        boolean:
+
+    name:
+      name: Name
+      description: Optional human-readable name shown in Home Assistant and the Wiser apps.
+      required: false
+      selector:
+        text:
+
+update_system_flag:
+  name: Update System Flag
+  description: >
+    Rename an existing system flag or change its symbol. Provide at least one
+    of the two. To change the flag's state, just toggle its switch entity.
+  fields:
+    entity_id:
+      name: System flag
+      description: The switch entity of the system flag.
+      required: true
+      selector:
+        entity:
+          filter:
+            - integration: wiser_by_feller
+              domain: switch
+
+    symbol:
+      name: Symbol
+      description: New technical identifier. Only letters, digits and underscores are allowed. Careful — Wiser jobs and conditions reference the flag by symbol.
+      required: false
+      selector:
+        text:
+
+    name:
+      name: Name
+      description: New human-readable name shown in Home Assistant and the Wiser apps.
+      required: false
+      selector:
+        text:
+
+delete_system_flag:
+  name: Delete System Flag
+  description: >
+    Delete a system flag from the µGateway. Wiser jobs and conditions that
+    reference the flag stop working, and the switch entity is removed from
+    Home Assistant.
+  fields:
+    entity_id:
+      name: System flag
+      description: The switch entity of the system flag.
+      required: true
+      selector:
+        entity:
+          filter:
+            - integration: wiser_by_feller
+              domain: switch
+
+assign_scene_flag:
+  name: Assign Scene Flag
+  description: >
+    Assign a system flag value to a Wiser scene. The frontset LEDs of the
+    scene's buttons light up in the configured "on" state while the flag
+    matches the assigned value, and triggering the scene sets the flag to that
+    value.
+  fields:
+    scene_entity_id:
+      name: Scene
+      description: The Wiser scene entity.
+      required: true
+      selector:
+        entity:
+          filter:
+            - integration: wiser_by_feller
+              domain: scene
+
+    flag_entity_id:
+      name: System flag
+      description: The switch entity of the system flag.
+      required: true
+      selector:
+        entity:
+          filter:
+            - integration: wiser_by_feller
+              domain: switch
+
+    value:
+      name: Value
+      description: Flag value the scene sets when triggered — the buttons' LEDs show the "on" state while the flag has this value.
+      required: false
+      default: true
+      selector:
+        boolean:
+
+unassign_scene_flag:
+  name: Unassign Scene Flag
+  description: >
+    Remove a system flag assignment from a Wiser scene. The scene's button
+    LEDs no longer follow the flag, and triggering the scene no longer sets it.
+  fields:
+    scene_entity_id:
+      name: Scene
+      description: The Wiser scene entity.
+      required: true
+      selector:
+        entity:
+          filter:
+            - integration: wiser_by_feller
+              domain: scene
+
+    flag_entity_id:
+      name: System flag
+      description: The switch entity of the system flag.
+      required: true
+      selector:
+        entity:
+          filter:
+            - integration: wiser_by_feller
+              domain: switch

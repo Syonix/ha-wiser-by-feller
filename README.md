@@ -97,15 +97,11 @@ Wiser by Feller devices have customizable status LEDs that can indicate load sta
 ### 🎛️ Button Events
 Physical button presses fire a Home Assistant event you can use in automations (click, long press, release). For detailed information, see the [Button Events documentation](docs/button-triggers.md).
 
-### 🕹️ System Flag
-Already configured system flags appear as switches in Home Assistant. Unfortunately currently there is no way to configure them other than via API. An integrated management of flags is planned (See #20).
+### 🚩 System Flags
+System flags are user-defined booleans on the µGateway that can be used in Wiser jobs and conditions (e.g. a holiday mode). They appear as switches in Home Assistant, and the integration provides actions to create, rename and delete them, as well as to assign them to Wiser scenes so scene button LEDs reflect the flag state. For detailed information, see the [System Flags documentation](docs/system-flags.md).
 
 ### 🧰 Housekeeping
 The integration automatically prompts you to re-connect if there is any authentication error.
-
-## 🛣️ Roadmap
-Here's a couple of things that are on the roadmap for future releases:
-- Wiser system flag management [#20](https://github.com/Syonix/ha-wiser-by-feller/issues/20)
 
 ## 🛟 Frequently asked questions
 ### Setup error `Invalid API response: Device 00012345 has an empty field c.comm_ref!`

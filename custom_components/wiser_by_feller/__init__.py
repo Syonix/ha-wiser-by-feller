@@ -3,17 +3,17 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, NoReturn
 
 from aiowiserbyfeller import Auth, UnsuccessfulRequest, WiserByFellerAPI
 from aiowiserbyfeller.enum import BlinkPattern
 from aiowiserbyfeller.util import parse_wiser_device_ref_c
 from homeassistant.components.light import ATTR_RGB_COLOR
 from homeassistant.config_entries import ConfigEntry, ConfigEntryState
-from homeassistant.const import Platform
+from homeassistant.const import ATTR_ENTITY_ID, Platform
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import homeassistant.helpers.config_validation as cv
 from homeassistant.helpers.typing import ConfigType
@@ -48,6 +48,11 @@ SERVICE_CLEAR_BUTTON_LED_OVERRIDE = "clear_button_led_override"
 SERVICE_FIND_BUTTON = "find_button"
 SERVICE_REGISTER_BUTTON = "register_button"
 SERVICE_UNREGISTER_BUTTON = "unregister_button"
+SERVICE_CREATE_SYSTEM_FLAG = "create_system_flag"
+SERVICE_UPDATE_SYSTEM_FLAG = "update_system_flag"
+SERVICE_DELETE_SYSTEM_FLAG = "delete_system_flag"
+SERVICE_ASSIGN_SCENE_FLAG = "assign_scene_flag"
+SERVICE_UNASSIGN_SCENE_FLAG = "unassign_scene_flag"
 
 ATTR_BUTTON_ID = "button_id"
 ATTR_LED_INDEX = "led_index"
@@ -56,6 +61,13 @@ ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 ATTR_DEVICE = "device"
 ATTR_CHANNEL = "channel"
 ATTR_REGISTER_UNMANAGED = "register_unmanaged"
+ATTR_SYMBOL = "symbol"
+ATTR_VALUE = "value"
+ATTR_NAME = "name"
+ATTR_SCENE_ENTITY_ID = "scene_entity_id"
+ATTR_FLAG_ENTITY_ID = "flag_entity_id"
+
+SYSTEM_FLAG_SYMBOL_REGEX = r"^[A-Za-z0-9_]+$"
 
 
 def rgb_tuple_to_hex(rgb: tuple[int, int, int]) -> str:
@@ -114,6 +126,47 @@ UNREGISTER_BUTTON_SCHEMA = vol.Schema(
     {
         vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
         vol.Required(ATTR_BUTTON_ID): cv.positive_int,
+    }
+)
+
+CREATE_SYSTEM_FLAG_SCHEMA = vol.Schema(
+    {
+        vol.Optional(ATTR_CONFIG_ENTRY_ID): cv.string,
+        vol.Required(ATTR_SYMBOL): vol.All(
+            cv.string, vol.Match(SYSTEM_FLAG_SYMBOL_REGEX)
+        ),
+        vol.Optional(ATTR_VALUE, default=False): cv.boolean,
+        vol.Optional(ATTR_NAME): cv.string,
+    }
+)
+
+UPDATE_SYSTEM_FLAG_SCHEMA = vol.All(
+    vol.Schema(
+        {
+            vol.Required(ATTR_ENTITY_ID): cv.entity_id,
+            vol.Optional(ATTR_SYMBOL): vol.All(
+                cv.string, vol.Match(SYSTEM_FLAG_SYMBOL_REGEX)
+            ),
+            vol.Optional(ATTR_NAME): cv.string,
+        }
+    ),
+    cv.has_at_least_one_key(ATTR_SYMBOL, ATTR_NAME),
+)
+
+DELETE_SYSTEM_FLAG_SCHEMA = vol.Schema({vol.Required(ATTR_ENTITY_ID): cv.entity_id})
+
+ASSIGN_SCENE_FLAG_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_SCENE_ENTITY_ID): cv.entity_id,
+        vol.Required(ATTR_FLAG_ENTITY_ID): cv.entity_id,
+        vol.Optional(ATTR_VALUE, default=True): cv.boolean,
+    }
+)
+
+UNASSIGN_SCENE_FLAG_SCHEMA = vol.Schema(
+    {
+        vol.Required(ATTR_SCENE_ENTITY_ID): cv.entity_id,
+        vol.Required(ATTR_FLAG_ENTITY_ID): cv.entity_id,
     }
 )
 
@@ -183,6 +236,102 @@ def _resolve_coordinator(
             translation_key="specify_gateway",
         )
     return loaded[0].runtime_data
+
+
+def _resolve_flag_entity(
+    hass: HomeAssistant, entity_id: str
+) -> tuple[WiserCoordinator, int]:
+    """Resolve a system flag switch entity to its coordinator and flag id.
+
+    The unique id of a flag switch is "<gateway>_flag_<id>", which also
+    distinguishes flag switches from on/off load switches of this integration.
+    """
+
+    def _raise_not_a_flag() -> NoReturn:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="not_a_system_flag",
+            translation_placeholders={"entity_id": entity_id},
+        )
+
+    entry = er.async_get(hass).async_get(entity_id)
+    if (
+        entry is None
+        or entry.platform != DOMAIN
+        or "_flag_" not in (entry.unique_id or "")
+    ):
+        _raise_not_a_flag()
+
+    try:
+        flag_id = int(entry.unique_id.rsplit("_flag_", 1)[1])
+    except ValueError:
+        _raise_not_a_flag()
+
+    config_entry = (
+        hass.config_entries.async_get_entry(entry.config_entry_id)
+        if entry.config_entry_id is not None
+        else None
+    )
+    if (
+        config_entry is None
+        or config_entry.state is not ConfigEntryState.LOADED
+        or config_entry.runtime_data is None
+    ):
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="no_gateway_loaded",
+        )
+    return config_entry.runtime_data, flag_id
+
+
+def _resolve_scene_entity(
+    hass: HomeAssistant, entity_id: str
+) -> tuple[WiserCoordinator, int]:
+    """Resolve a Wiser scene entity to its coordinator and the scene's job id.
+
+    The unique id of a scene entity is "<gateway>_scene_<id>".
+    """
+
+    def _raise_not_a_scene() -> NoReturn:
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="not_a_wiser_scene",
+            translation_placeholders={"entity_id": entity_id},
+        )
+
+    entry = er.async_get(hass).async_get(entity_id)
+    if (
+        entry is None
+        or entry.platform != DOMAIN
+        or "_scene_" not in (entry.unique_id or "")
+    ):
+        _raise_not_a_scene()
+
+    try:
+        scene_id = int(entry.unique_id.rsplit("_scene_", 1)[1])
+    except ValueError:
+        _raise_not_a_scene()
+
+    config_entry = (
+        hass.config_entries.async_get_entry(entry.config_entry_id)
+        if entry.config_entry_id is not None
+        else None
+    )
+    if (
+        config_entry is None
+        or config_entry.state is not ConfigEntryState.LOADED
+        or config_entry.runtime_data is None
+    ):
+        raise ServiceValidationError(
+            translation_domain=DOMAIN,
+            translation_key="no_gateway_loaded",
+        )
+
+    coordinator: WiserCoordinator = config_entry.runtime_data
+    scene = (coordinator.scenes or {}).get(scene_id)
+    if scene is None:
+        _raise_not_a_scene()
+    return coordinator, scene.job
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -324,6 +473,69 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             "channel": button.channel,
         }
 
+    def _flag_response(flag: Any) -> dict[str, Any]:
+        return {
+            "id": flag.id,
+            "symbol": flag.symbol,
+            "value": flag.value,
+            "name": flag.name,
+        }
+
+    async def async_create_system_flag_service(call: ServiceCall) -> dict[str, Any]:
+        """Create a new system flag on the µGateway."""
+        coordinator = _resolve_coordinator(hass, call.data.get(ATTR_CONFIG_ENTRY_ID))
+        flag = await coordinator.async_create_system_flag(
+            call.data[ATTR_SYMBOL],
+            value=call.data[ATTR_VALUE],
+            name=call.data.get(ATTR_NAME),
+        )
+        return _flag_response(flag)
+
+    async def async_update_system_flag_service(call: ServiceCall) -> dict[str, Any]:
+        """Update the symbol and/or name of an existing system flag."""
+        coordinator, flag_id = _resolve_flag_entity(hass, call.data[ATTR_ENTITY_ID])
+        flag = await coordinator.async_update_system_flag(
+            flag_id,
+            symbol=call.data.get(ATTR_SYMBOL),
+            name=call.data.get(ATTR_NAME),
+        )
+        return _flag_response(flag)
+
+    async def async_delete_system_flag_service(call: ServiceCall) -> dict[str, Any]:
+        """Delete an existing system flag from the µGateway."""
+        coordinator, flag_id = _resolve_flag_entity(hass, call.data[ATTR_ENTITY_ID])
+        flag = await coordinator.async_delete_system_flag(flag_id)
+        return _flag_response(flag)
+
+    def _resolve_scene_and_flag(call: ServiceCall) -> tuple[WiserCoordinator, int, int]:
+        """Resolve scene and flag entities, ensuring they share one µGateway."""
+        coordinator, job_id = _resolve_scene_entity(
+            hass, call.data[ATTR_SCENE_ENTITY_ID]
+        )
+        flag_coordinator, flag_id = _resolve_flag_entity(
+            hass, call.data[ATTR_FLAG_ENTITY_ID]
+        )
+        if flag_coordinator is not coordinator:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="not_same_gateway",
+            )
+        return coordinator, job_id, flag_id
+
+    async def async_assign_scene_flag_service(call: ServiceCall) -> dict[str, Any]:
+        """Assign a system flag value to a scene on the µGateway."""
+        coordinator, job_id, flag_id = _resolve_scene_and_flag(call)
+        flag_values = await coordinator.async_assign_scene_flag(
+            job_id, flag_id, call.data[ATTR_VALUE]
+        )
+        return {"job_id": job_id, "flag_values": flag_values}
+
+    async def async_unassign_scene_flag_service(call: ServiceCall) -> dict[str, Any]:
+        """Remove a system flag assignment from a scene on the µGateway."""
+        coordinator, job_id, flag_id = _resolve_scene_and_flag(call)
+        flag_values = await coordinator.async_unassign_scene_flag(job_id, flag_id)
+        return {"job_id": job_id, "flag_values": flag_values}
+
     hass.services.async_register(DOMAIN, SERVICE_STATUS_LIGHT, handle_status_light)
     hass.services.async_register(
         DOMAIN,
@@ -356,6 +568,41 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         SERVICE_UNREGISTER_BUTTON,
         async_unregister_button_service,
         schema=UNREGISTER_BUTTON_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CREATE_SYSTEM_FLAG,
+        async_create_system_flag_service,
+        schema=CREATE_SYSTEM_FLAG_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_UPDATE_SYSTEM_FLAG,
+        async_update_system_flag_service,
+        schema=UPDATE_SYSTEM_FLAG_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_DELETE_SYSTEM_FLAG,
+        async_delete_system_flag_service,
+        schema=DELETE_SYSTEM_FLAG_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_ASSIGN_SCENE_FLAG,
+        async_assign_scene_flag_service,
+        schema=ASSIGN_SCENE_FLAG_SCHEMA,
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_UNASSIGN_SCENE_FLAG,
+        async_unassign_scene_flag_service,
+        schema=UNASSIGN_SCENE_FLAG_SCHEMA,
         supports_response=SupportsResponse.OPTIONAL,
     )
     return True

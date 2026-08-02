@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 from aiowiserbyfeller import UnsuccessfulRequest
 from homeassistant.config_entries import ConfigEntryState
 from homeassistant.exceptions import ServiceValidationError
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 import voluptuous as vol
@@ -217,6 +217,11 @@ async def test_unload_entry_keeps_services(hass, setup_integration):
     assert hass.services.has_service(DOMAIN, "find_button")
     assert hass.services.has_service(DOMAIN, "register_button")
     assert hass.services.has_service(DOMAIN, "unregister_button")
+    assert hass.services.has_service(DOMAIN, "create_system_flag")
+    assert hass.services.has_service(DOMAIN, "update_system_flag")
+    assert hass.services.has_service(DOMAIN, "delete_system_flag")
+    assert hass.services.has_service(DOMAIN, "assign_scene_flag")
+    assert hass.services.has_service(DOMAIN, "unassign_scene_flag")
 
 
 # ── find_button service ───────────────────────────────────────────────────────
@@ -607,3 +612,253 @@ async def test_button_service_requires_gateway_when_multiple(
             {"button_id": 1, "led_index": "0", "rgb_color": [255, 0, 0]},
             blocking=True,
         )
+
+
+# ── system flag services ──────────────────────────────────────────────────────
+
+_SN = "20012161"  # matches conftest MOCK_SN / mock_gateway serial
+
+
+def _make_flag_result(flag_id=3, symbol="holiday", value=False, flag_name="Holiday"):
+    flag = MagicMock()
+    flag.id = flag_id
+    flag.symbol = symbol
+    flag.value = value
+    flag.name = flag_name
+    return flag
+
+
+def _seed_entity(hass, entry, domain, unique_id):
+    """Create an entity registry entry bound to the config entry."""
+    registry = er.async_get(hass)
+    return registry.async_get_or_create(
+        domain, DOMAIN, unique_id, config_entry=entry
+    ).entity_id
+
+
+async def test_create_system_flag_returns_flag_fields(
+    hass, setup_integration, mock_coordinator
+):
+    """create_system_flag delegates to the coordinator and returns the flag."""
+    mock_coordinator.async_create_system_flag = AsyncMock(
+        return_value=_make_flag_result()
+    )
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        "create_system_flag",
+        {"symbol": "holiday", "name": "Holiday"},
+        blocking=True,
+        return_response=True,
+    )
+
+    mock_coordinator.async_create_system_flag.assert_awaited_once_with(
+        "holiday", value=False, name="Holiday"
+    )
+    assert response == {
+        "id": 3,
+        "symbol": "holiday",
+        "value": False,
+        "name": "Holiday",
+    }
+
+
+async def test_create_system_flag_invalid_symbol_rejected(hass, setup_integration):
+    """Symbols with characters outside A-Za-z0-9_ are rejected by the schema."""
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            "create_system_flag",
+            {"symbol": "not valid!"},
+            blocking=True,
+        )
+
+
+async def test_update_system_flag_resolves_entity(
+    hass, setup_integration, mock_coordinator
+):
+    """update_system_flag resolves the switch entity to its flag id."""
+    entity_id = _seed_entity(hass, setup_integration, "switch", f"{_SN}_flag_3")
+    mock_coordinator.async_update_system_flag = AsyncMock(
+        return_value=_make_flag_result()
+    )
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        "update_system_flag",
+        {"entity_id": entity_id, "name": "Holiday"},
+        blocking=True,
+        return_response=True,
+    )
+
+    mock_coordinator.async_update_system_flag.assert_awaited_once_with(
+        3, symbol=None, name="Holiday"
+    )
+    assert response["id"] == 3
+
+
+async def test_update_system_flag_requires_symbol_or_name(hass, setup_integration):
+    """update_system_flag without symbol and name is rejected by the schema."""
+    with pytest.raises(vol.Invalid):
+        await hass.services.async_call(
+            DOMAIN,
+            "update_system_flag",
+            {"entity_id": "switch.some_flag"},
+            blocking=True,
+        )
+
+
+async def test_update_system_flag_rejects_non_flag_entity(
+    hass, setup_integration, mock_coordinator
+):
+    """A switch entity of this integration that is not a flag raises a clear error."""
+    entity_id = _seed_entity(hass, setup_integration, "switch", "0002244a_1")
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await hass.services.async_call(
+            DOMAIN,
+            "update_system_flag",
+            {"entity_id": entity_id, "name": "Holiday"},
+            blocking=True,
+        )
+
+    assert exc.value.translation_key == "not_a_system_flag"
+
+
+async def test_update_system_flag_rejects_unknown_entity(hass, setup_integration):
+    """An entity id that is not in the registry raises a clear error."""
+    with pytest.raises(ServiceValidationError) as exc:
+        await hass.services.async_call(
+            DOMAIN,
+            "update_system_flag",
+            {"entity_id": "switch.does_not_exist", "name": "Holiday"},
+            blocking=True,
+        )
+
+    assert exc.value.translation_key == "not_a_system_flag"
+
+
+async def test_delete_system_flag_resolves_entity(
+    hass, setup_integration, mock_coordinator
+):
+    """delete_system_flag resolves the switch entity and returns the deleted flag."""
+    entity_id = _seed_entity(hass, setup_integration, "switch", f"{_SN}_flag_7")
+    mock_coordinator.async_delete_system_flag = AsyncMock(
+        return_value=_make_flag_result(flag_id=7)
+    )
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        "delete_system_flag",
+        {"entity_id": entity_id},
+        blocking=True,
+        return_response=True,
+    )
+
+    mock_coordinator.async_delete_system_flag.assert_awaited_once_with(7)
+    assert response["id"] == 7
+
+
+# ── scene flag services ───────────────────────────────────────────────────────
+
+
+async def test_assign_scene_flag_resolves_scene_and_flag(
+    hass, setup_integration, mock_coordinator
+):
+    """assign_scene_flag resolves both entities and delegates with the job id."""
+    scene_entity_id = _seed_entity(hass, setup_integration, "scene", f"{_SN}_scene_5")
+    flag_entity_id = _seed_entity(hass, setup_integration, "switch", f"{_SN}_flag_3")
+    mock_coordinator.scenes = {5: MagicMock(job=100)}
+    mock_coordinator.async_assign_scene_flag = AsyncMock(
+        return_value=[{"flag": 3, "value": True}]
+    )
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        "assign_scene_flag",
+        {"scene_entity_id": scene_entity_id, "flag_entity_id": flag_entity_id},
+        blocking=True,
+        return_response=True,
+    )
+
+    mock_coordinator.async_assign_scene_flag.assert_awaited_once_with(100, 3, True)
+    assert response == {"job_id": 100, "flag_values": [{"flag": 3, "value": True}]}
+
+
+async def test_assign_scene_flag_passes_value(
+    hass, setup_integration, mock_coordinator
+):
+    """An explicit value False is passed through to the coordinator."""
+    scene_entity_id = _seed_entity(hass, setup_integration, "scene", f"{_SN}_scene_5")
+    flag_entity_id = _seed_entity(hass, setup_integration, "switch", f"{_SN}_flag_3")
+    mock_coordinator.scenes = {5: MagicMock(job=100)}
+    mock_coordinator.async_assign_scene_flag = AsyncMock(return_value=[])
+
+    await hass.services.async_call(
+        DOMAIN,
+        "assign_scene_flag",
+        {
+            "scene_entity_id": scene_entity_id,
+            "flag_entity_id": flag_entity_id,
+            "value": False,
+        },
+        blocking=True,
+    )
+
+    mock_coordinator.async_assign_scene_flag.assert_awaited_once_with(100, 3, False)
+
+
+async def test_assign_scene_flag_rejects_non_scene_entity(
+    hass, setup_integration, mock_coordinator
+):
+    """A non-scene entity in the scene field raises a clear error."""
+    scene_entity_id = _seed_entity(hass, setup_integration, "switch", f"{_SN}_flag_9")
+    flag_entity_id = _seed_entity(hass, setup_integration, "switch", f"{_SN}_flag_3")
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await hass.services.async_call(
+            DOMAIN,
+            "assign_scene_flag",
+            {"scene_entity_id": scene_entity_id, "flag_entity_id": flag_entity_id},
+            blocking=True,
+        )
+
+    assert exc.value.translation_key == "not_a_wiser_scene"
+
+
+async def test_assign_scene_flag_rejects_unknown_scene(
+    hass, setup_integration, mock_coordinator
+):
+    """A scene entity whose scene is missing from the coordinator raises."""
+    scene_entity_id = _seed_entity(hass, setup_integration, "scene", f"{_SN}_scene_5")
+    flag_entity_id = _seed_entity(hass, setup_integration, "switch", f"{_SN}_flag_3")
+    mock_coordinator.scenes = {}
+
+    with pytest.raises(ServiceValidationError) as exc:
+        await hass.services.async_call(
+            DOMAIN,
+            "assign_scene_flag",
+            {"scene_entity_id": scene_entity_id, "flag_entity_id": flag_entity_id},
+            blocking=True,
+        )
+
+    assert exc.value.translation_key == "not_a_wiser_scene"
+
+
+async def test_unassign_scene_flag_delegates(hass, setup_integration, mock_coordinator):
+    """unassign_scene_flag resolves both entities and delegates with the job id."""
+    scene_entity_id = _seed_entity(hass, setup_integration, "scene", f"{_SN}_scene_5")
+    flag_entity_id = _seed_entity(hass, setup_integration, "switch", f"{_SN}_flag_3")
+    mock_coordinator.scenes = {5: MagicMock(job=100)}
+    mock_coordinator.async_unassign_scene_flag = AsyncMock(return_value=[])
+
+    response = await hass.services.async_call(
+        DOMAIN,
+        "unassign_scene_flag",
+        {"scene_entity_id": scene_entity_id, "flag_entity_id": flag_entity_id},
+        blocking=True,
+        return_response=True,
+    )
+
+    mock_coordinator.async_unassign_scene_flag.assert_awaited_once_with(100, 3)
+    assert response == {"job_id": 100, "flag_values": []}

@@ -19,7 +19,7 @@ By default, the same color is used for both states and only the brightness diffe
 Secondary controls without loads mirror the LED state of their primary device. Scene buttons do not have an inherent on or off state, since scenes are triggered rather than toggled.
 
 > [!TIP]
-> You can assign a system flag to a scene button to give it an on or off state for the LED. This is an advanced feature that requires knowledge of the Wiser ecosystem and API. A more convenient integration of this is planned for a future release (see [#20](https://github.com/Syonix/ha-wiser-by-feller/issues/20)).
+> You can assign a system flag to a scene to give its buttons an on or off state for the LED, using the **assign scene flag** action. See the [System Flags documentation](system-flags.md) for details.
 
 ## 🕐 Temporary Override
 

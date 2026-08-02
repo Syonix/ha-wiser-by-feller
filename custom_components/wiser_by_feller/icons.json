@@ -25,5 +25,22 @@
         "default": "mdi:weather-hail"
       }
     }
+  },
+  "services": {
+    "create_system_flag": {
+      "service": "mdi:flag-plus"
+    },
+    "update_system_flag": {
+      "service": "mdi:flag"
+    },
+    "delete_system_flag": {
+      "service": "mdi:flag-remove"
+    },
+    "assign_scene_flag": {
+      "service": "mdi:flag-triangle"
+    },
+    "unassign_scene_flag": {
+      "service": "mdi:flag-off"
+    }
   }
 }
