@@ -28,9 +28,21 @@ panel_custom:
   - name: logs
     sidebar_title: Logs
     sidebar_icon: mdi:math-log
-    url_path: config/logs
+    url_path: "config/logs"
     js_url: /api/hassio/app/entrypoint.js
     embed_iframe: true
     require_admin: true
     config:
       ingress: core_configurator
+  - name: wiser-integration
+    sidebar_title: Wiser by Feller
+    sidebar_icon: mdi:lightbulb
+    url_path: "config/integrations/integration/wiser_by_feller"
+    js_url: /api/hassio/app/entrypoint.js
+    embed_iframe: true
+  - name: actions
+    sidebar_title: Actions
+    sidebar_icon: mdi:gesture-tap
+    url_path: "config/developer-tools/action"
+    js_url: /api/hassio/app/entrypoint.js
+    embed_iframe: true
