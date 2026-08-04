@@ -46,7 +46,12 @@ from .const import (
     OPTIONS_ALLOW_MISSING_GATEWAY_DATA,
 )
 from .exceptions import UnexpectedGatewayResult
-from .util import resolve_device_name, rgb_tuple_to_hex
+from .util import (
+    format_button_inputs,
+    resolve_button_inputs,
+    resolve_device_name,
+    rgb_tuple_to_hex,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -250,11 +255,17 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
 
         wdevice = self._device_ids_by_serial[sn]
 
-        if channel >= len(self._devices[wdevice].inputs):
+        # Inputs also cover non-button entries (e.g. the sensor values of a
+        # room sensor or weather station), which have no status light.
+        buttons = resolve_button_inputs(self._devices[wdevice])
+        if channel not in buttons:
             raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="invalid_channel",
-                translation_placeholders={"channel": str(channel)},
+                translation_placeholders={
+                    "channel": str(channel),
+                    "channels": format_button_inputs(buttons) or "none",
+                },
             )
 
         data: dict[str, Any] = {
@@ -525,7 +536,13 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
 
     def resolve_managed_button_fields(self, button_id: int) -> dict:
         """Return structured display fields for a managed button."""
-        empty: dict = {"room_name": None, "device_name": None, "scene_name": None}
+        empty: dict = {
+            "room_name": None,
+            "device_name": None,
+            "scene_name": None,
+            "channel_type": None,
+            "channel_position": None,
+        }
 
         if self._managed_buttons is None or self._devices is None:
             return empty
@@ -564,10 +581,16 @@ class WiserCoordinator(DataUpdateCoordinator[None]):
                     scene_name = scene.name
                     break
 
+        # Which physical button on the front the channel refers to, so callers
+        # don't have to guess from the channel number alone.
+        channel_info = resolve_button_inputs(device).get(button.channel, {})
+
         return {
             "room_name": room_name,
             "device_name": device_name,
             "scene_name": scene_name,
+            "channel_type": channel_info.get("sub_type") or None,
+            "channel_position": channel_info.get("position"),
         }
 
     async def _async_update_data(self) -> None:

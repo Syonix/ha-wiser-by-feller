@@ -297,8 +297,16 @@ _MANAGED_FIELDS = {
     "room_name": "Living Room",
     "device_name": "Dimmer Plus",
     "scene_name": None,
+    "channel_type": "scene",
+    "channel_position": "top_right",
 }
-_EMPTY_FIELDS = {"room_name": None, "device_name": None, "scene_name": None}
+_EMPTY_FIELDS = {
+    "room_name": None,
+    "device_name": None,
+    "scene_name": None,
+    "channel_type": None,
+    "channel_position": None,
+}
 
 
 async def test_find_button_service_is_registered(hass, setup_integration):
@@ -464,6 +472,8 @@ async def test_register_button_returns_resolved_fields(
         "button_id": 7,
         "device": "00019edc",
         "channel": 1,
+        "channel_type": "scene",
+        "channel_position": "top_right",
         "room_name": "Living Room",
         "device_name": "Dimmer Plus",
         "scene_name": None,

@@ -26,6 +26,7 @@ status_light:
         select:
           translation_key: "select_channel"
           options: ["0", "1", "2", "3"]
+          mode: list
     brightness_on:
       required: true
       default: 100
@@ -182,7 +183,7 @@ register_button:
 
     channel:
       name: Channel
-      description: Input channel of the button on the device.
+      description: Input channel of the button on the device, as reported by the Find Button action.
       required: true
       default: 0
       selector:

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from aiowiserbyfeller import Device, Load
+from aiowiserbyfeller.const import INPUT_TYPE_BUTTON
 from aiowiserbyfeller.util import parse_wiser_device_fwid
 
-from .const import SELF_DESCRIBING_FRONT_HW_TYPES
+from .const import BUTTON_POSITIONS, SELF_DESCRIBING_FRONT_HW_TYPES
 
 
 def resolve_load_name(load: Load, room: dict):
@@ -43,6 +44,43 @@ def resolve_device_name(device: Device, room: dict | None, load: Load | None) ->
         return name
 
     return f"{room['name']} {name}"
+
+
+def resolve_button_inputs(device: Device) -> dict[int, dict]:
+    """Map input channels of a device to their button description.
+
+    The `inputs` list of a device also contains non-button inputs (sensor
+    values on a room sensor or weather station), so only inputs of type
+    `button` can be targeted by LED services.
+
+    Buttons are numbered down the left column first, then down the right
+    column, where a rocker (up/down) occupies a single channel. The physical
+    position can therefore only be derived from the number of buttons on the
+    front, which is what BUTTON_POSITIONS maps.
+    """
+    buttons = {
+        channel: entry
+        for channel, entry in enumerate(device.inputs)
+        if entry.get("type") == INPUT_TYPE_BUTTON
+    }
+    positions = BUTTON_POSITIONS.get(len(buttons), ())
+
+    return {
+        channel: {
+            "sub_type": entry.get("sub_type") or "",
+            "position": positions[index] if index < len(positions) else None,
+            "button_id": entry.get("button"),
+        }
+        for index, (channel, entry) in enumerate(buttons.items())
+    }
+
+
+def format_button_inputs(buttons: dict[int, dict]) -> str:
+    """Format button inputs as a list of channels for error messages."""
+    return ", ".join(
+        f"{channel} ({info['sub_type']})" if info["sub_type"] else str(channel)
+        for channel, info in buttons.items()
+    )
 
 
 def wiser_to_brightness(value: int | None) -> int | None:

@@ -410,12 +410,13 @@ def _make_button(button_id=1, device_id="00019edc", channel=0, job_id=None):
 
 
 def _make_device_for_coord(
-    comm_name_c="Dimmer Plus", comm_name_a="Dimmer", outputs=None
+    comm_name_c="Dimmer Plus", comm_name_a="Dimmer", outputs=None, inputs=None
 ):
     device = MagicMock()
     device.c = {"comm_name": comm_name_c, "comm_ref": "ABC", "fw_version": "1.0"}
     device.a = {"comm_name": comm_name_a, "comm_ref": "ABC", "fw_version": "1.0"}
     device.outputs = outputs or []
+    device.inputs = inputs or []
     return device
 
 
@@ -435,6 +436,8 @@ def test_resolve_button_fields_empty_when_managed_buttons_none(coordinator):
         "room_name": None,
         "device_name": None,
         "scene_name": None,
+        "channel_type": None,
+        "channel_position": None,
     }
 
 
@@ -446,6 +449,8 @@ def test_resolve_button_fields_empty_when_devices_none(coordinator):
         "room_name": None,
         "device_name": None,
         "scene_name": None,
+        "channel_type": None,
+        "channel_position": None,
     }
 
 
@@ -457,6 +462,8 @@ def test_resolve_button_fields_empty_when_button_not_found(coordinator):
         "room_name": None,
         "device_name": None,
         "scene_name": None,
+        "channel_type": None,
+        "channel_position": None,
     }
 
 
@@ -468,6 +475,8 @@ def test_resolve_button_fields_empty_when_device_not_found(coordinator):
         "room_name": None,
         "device_name": None,
         "scene_name": None,
+        "channel_type": None,
+        "channel_position": None,
     }
 
 
@@ -861,12 +870,14 @@ def _status_light_call(**overrides):
     return call
 
 
-def _prepare_status_light(coordinator, mock_api):
+def _prepare_status_light(coordinator, mock_api, inputs=None):
     """Wire up the device lookups async_set_status_light needs."""
     device = MagicMock()
     device.serial_number = "20012161"
+    if inputs is None:
+        inputs = [{"type": "button", "sub_type": "scene"} for _ in range(4)]
     coordinator._device_ids_by_serial = {"20012161": "wiser-device-1"}
-    coordinator._devices = {"wiser-device-1": MagicMock(inputs=[0, 1, 2, 3])}
+    coordinator._devices = {"wiser-device-1": MagicMock(inputs=inputs)}
     mock_api.async_get_device_config = AsyncMock(return_value={"id": "config-7"})
     mock_api.async_set_device_input_config = AsyncMock()
     mock_api.async_apply_device_config = AsyncMock()
@@ -1080,3 +1091,75 @@ async def test_update_devices_deletes_issue_for_valid_device(
 
     deleted_ids = [call.args[2] for call in mock_delete.call_args_list]
     assert "missing_device_data_good1" in deleted_ids
+
+
+async def test_set_status_light_rejects_non_button_channel(coordinator, mock_api):
+    """A sensor input is not a valid status light channel.
+
+    Room sensors and weather stations report their sensor values as inputs, so
+    the raw input count is not a usable channel range.
+    """
+    device = _prepare_status_light(
+        coordinator,
+        mock_api,
+        inputs=[
+            {"type": "button", "sub_type": "touch_display"},
+            {"type": "temperature", "sub_type": ""},
+            {"type": "humidity", "sub_type": ""},
+        ],
+    )
+
+    with patch("custom_components.wiser_by_feller.coordinator.dr.async_get") as mock_dr:
+        mock_dr.return_value.async_get.return_value = device
+        with pytest.raises(ServiceValidationError) as exc:
+            await coordinator.async_set_status_light(_status_light_call(channel="1"))
+
+    assert exc.value.translation_key == "invalid_channel"
+    assert exc.value.translation_placeholders == {
+        "channel": "1",
+        "channels": "0 (touch_display)",
+    }
+    mock_api.async_set_device_input_config.assert_not_awaited()
+
+
+async def test_set_status_light_lists_available_channels(coordinator, mock_api):
+    """An out-of-range channel names the channels the device actually has."""
+    device = _prepare_status_light(
+        coordinator,
+        mock_api,
+        inputs=[
+            {"type": "button", "sub_type": "up down"},
+            {"type": "button", "sub_type": "scene", "button": 70},
+        ],
+    )
+
+    with patch("custom_components.wiser_by_feller.coordinator.dr.async_get") as mock_dr:
+        mock_dr.return_value.async_get.return_value = device
+        with pytest.raises(ServiceValidationError) as exc:
+            await coordinator.async_set_status_light(_status_light_call(channel="3"))
+
+    assert exc.value.translation_placeholders["channels"] == "0 (up down), 1 (scene)"
+
+
+def test_resolve_button_fields_includes_channel_description(coordinator):
+    """Managed button fields describe which physical button the channel is."""
+    coordinator._managed_buttons = {
+        1: _make_button(button_id=1, device_id="dev1", channel=1)
+    }
+    coordinator._devices = {
+        "dev1": _make_device_for_coord(
+            inputs=[
+                {"type": "button", "sub_type": "up down"},
+                {"type": "button", "sub_type": "scene", "button": 70},
+                {"type": "button", "sub_type": "scene", "button": 74},
+            ]
+        )
+    }
+    coordinator._loads = {}
+    coordinator._rooms = {}
+    coordinator._scenes = {}
+
+    result = coordinator.resolve_managed_button_fields(1)
+
+    assert result["channel_type"] == "scene"
+    assert result["channel_position"] == "top_right"

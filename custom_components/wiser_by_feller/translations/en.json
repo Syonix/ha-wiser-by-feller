@@ -148,16 +148,16 @@
   "selector": {
     "select_channel": {
       "options": {
-        "0": "Left (Top) or Center Button",
-        "1": "Right (Top) Button",
-        "2": "Left (Bottom) Button",
-        "3": "Right (Bottom) Button"
+        "0": "Channel 0 (first button)",
+        "1": "Channel 1 (second button)",
+        "2": "Channel 2 (third button)",
+        "3": "Channel 3 (fourth button)"
       }
     },
     "select_led_index": {
       "options": {
-        "0": "Primary (Up/Plus for dimmer or motor buttons)",
-        "1": "Down / Minus (only for dimmer or motor buttons)"
+        "0": "Primary (up / plus half of a rocker)",
+        "1": "Secondary (down / minus half of a rocker)"
       }
     }
   },
@@ -209,7 +209,7 @@
       "message": "Device {device_id} was not found."
     },
     "invalid_channel": {
-      "message": "Channel {channel} does not exist on this device."
+      "message": "Channel {channel} is not a button on this device. Available channels: {channels}."
     },
     "status_light_failed": {
       "message": "Failed to set status light: {error}"
@@ -288,7 +288,7 @@
         },
         "channel": {
           "name": "Channel",
-          "description": "The specific button on the device to control."
+          "description": "Which button on the device to configure. Buttons are counted down the left column first, then down the right column, and a rocker (up/down) counts as a single channel. Use the Find Button action to identify a button's channel."
         },
         "brightness_on": {
           "name": "Brightness when on",
@@ -372,7 +372,7 @@
         },
         "channel": {
           "name": "Channel",
-          "description": "Input channel of the button on the device."
+          "description": "Input channel of the button on the device, as reported by the Find Button action."
         }
       }
     },

@@ -6,7 +6,9 @@ from custom_components.wiser_by_feller.util import (
     brightness_to_wiser,
     cover_position_to_wiser,
     cover_tilt_to_wiser,
+    format_button_inputs,
     hex_to_rbg_tuple,
+    resolve_button_inputs,
     resolve_device_name,
     rgb_tuple_to_hex,
     wiser_to_brightness,
@@ -147,3 +149,99 @@ def _make_device(comm_name_c: str, comm_name_a: str, fw_id_c: str = ""):
     device.c_name = comm_name_c
     device.a_name = comm_name_a
     return device
+
+
+# ── resolve_button_inputs ────────────────────────────────────────────────────
+#
+# The input shapes below are taken verbatim from real device diagnostics.
+
+
+def _make_device_with_inputs(*inputs):
+    device = MagicMock()
+    device.inputs = list(inputs)
+    return device
+
+
+def _button(sub_type: str, button_id: int | None = None) -> dict:
+    entry = {"type": "button", "sub_type": sub_type}
+    if button_id is not None:
+        entry["button"] = button_id
+    return entry
+
+
+def test_resolve_button_inputs_single_rocker():
+    """A one-rocker front (dimmer, blind) reports a single positionless button."""
+    device = _make_device_with_inputs(_button("up down"))
+    assert resolve_button_inputs(device) == {
+        0: {"sub_type": "up down", "position": "single", "button_id": None}
+    }
+
+
+def test_resolve_button_inputs_two_gang():
+    """A two-gang front is numbered left, right."""
+    device = _make_device_with_inputs(_button("toggle"), _button("toggle"))
+    result = resolve_button_inputs(device)
+    assert [info["position"] for info in result.values()] == ["left", "right"]
+
+
+def test_resolve_button_inputs_rocker_plus_two_scenes():
+    """A dimmer with two scene buttons: rocker left, scenes top/bottom right."""
+    device = _make_device_with_inputs(
+        _button("up down"), _button("scene", 70), _button("scene", 74)
+    )
+    assert resolve_button_inputs(device) == {
+        0: {"sub_type": "up down", "position": "left", "button_id": None},
+        1: {"sub_type": "scene", "position": "top_right", "button_id": 70},
+        2: {"sub_type": "scene", "position": "bottom_right", "button_id": 74},
+    }
+
+
+def test_resolve_button_inputs_four_scenes():
+    """A four-scene front is numbered top left, bottom left, top right, bottom right."""
+    device = _make_device_with_inputs(*[_button("scene") for _ in range(4)])
+    assert [info["position"] for info in resolve_button_inputs(device).values()] == [
+        "top_left",
+        "bottom_left",
+        "top_right",
+        "bottom_right",
+    ]
+
+
+def test_resolve_button_inputs_skips_sensor_inputs():
+    """Sensor inputs of a room sensor are not selectable channels."""
+    device = _make_device_with_inputs(
+        _button("touch_display"),
+        {"type": "temperature", "sub_type": ""},
+        {"type": "humidity", "sub_type": ""},
+        {"type": "CO2", "sub_type": ""},
+        {"type": "temperature", "sub_type": "ntc"},
+        {"type": "window", "sub_type": ""},
+    )
+    result = resolve_button_inputs(device)
+    assert list(result) == [0]
+    assert result[0]["sub_type"] == "touch_display"
+
+
+def test_resolve_button_inputs_keeps_channel_numbering():
+    """Channels stay the raw input index, even when sensors sit in between."""
+    device = _make_device_with_inputs(
+        {"type": "temperature", "sub_type": ""},
+        _button("scene"),
+    )
+    assert list(resolve_button_inputs(device)) == [1]
+
+
+def test_resolve_button_inputs_unknown_count_has_no_position():
+    """A front with an unmapped number of buttons reports no position."""
+    device = _make_device_with_inputs(*[_button("scene") for _ in range(5)])
+    assert all(
+        info["position"] is None for info in resolve_button_inputs(device).values()
+    )
+
+
+def test_format_button_inputs():
+    """Channels are formatted with their sub type for error messages."""
+    device = _make_device_with_inputs(_button("up down"), _button("scene"))
+    assert (
+        format_button_inputs(resolve_button_inputs(device)) == "0 (up down), 1 (scene)"
+    )

@@ -447,6 +447,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             "room_name": fields["room_name"],
             "device_name": fields["device_name"],
             "scene_name": fields["scene_name"],
+            "channel_type": fields["channel_type"],
+            "channel_position": fields["channel_position"],
         }
 
     async def async_register_button_service(call: ServiceCall) -> dict[str, Any]:
@@ -464,6 +466,8 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             "room_name": fields["room_name"],
             "device_name": fields["device_name"],
             "scene_name": fields["scene_name"],
+            "channel_type": fields["channel_type"],
+            "channel_position": fields["channel_position"],
         }
 
     async def async_unregister_button_service(call: ServiceCall) -> dict[str, Any]:

@@ -21,6 +21,30 @@ MIN_FIRMWARE_REFRESH_PROPERTIES = (6, 0, 40)
 
 EVENT_BUTTON = f"{DOMAIN}_button_event"
 
+# Physical position of each button on a front, by number of button inputs.
+# Buttons are numbered down the left column first, then down the right column,
+# and a rocker (up/down) occupies a single channel. Fronts with a different
+# number of buttons report no position.
+POSITION_SINGLE = "single"
+POSITION_LEFT = "left"
+POSITION_RIGHT = "right"
+POSITION_TOP_LEFT = "top_left"
+POSITION_BOTTOM_LEFT = "bottom_left"
+POSITION_TOP_RIGHT = "top_right"
+POSITION_BOTTOM_RIGHT = "bottom_right"
+
+BUTTON_POSITIONS: dict[int, tuple[str, ...]] = {
+    1: (POSITION_SINGLE,),
+    2: (POSITION_LEFT, POSITION_RIGHT),
+    3: (POSITION_LEFT, POSITION_TOP_RIGHT, POSITION_BOTTOM_RIGHT),
+    4: (
+        POSITION_TOP_LEFT,
+        POSITION_BOTTOM_LEFT,
+        POSITION_TOP_RIGHT,
+        POSITION_BOTTOM_RIGHT,
+    ),
+}
+
 # C-block hardware type categories (bits 9-14 of the C-block firmware ID, see
 # aiowiserbyfeller.util.parse_wiser_device_fwid) whose front module name fully
 # describes the device. For these, the actuator module name is omitted from the

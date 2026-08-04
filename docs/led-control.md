@@ -101,6 +101,23 @@ To remove a registration again, use `wiser_by_feller.unregister_button` with the
 
 </details>
 
+## 🔢 Channel numbering
+
+Both device configuration and button registration address a button by its **channel**, which is the index of the input on the device. Buttons are counted **down the left column first, then down the right column**, and a rocker (up/down) counts as a *single* channel — its two halves are selected with `led_index` instead.
+
+| Front | Channel 0 | Channel 1 | Channel 2 | Channel 3 |
+|---|---|---|---|---|
+| Single rocker (dimmer, blind) | whole front | – | – | – |
+| Two-gang switch or two rockers | left | right | – | – |
+| Rocker + two scene buttons | rocker (left) | top right | bottom right | – |
+| Four scene buttons | top left | bottom left | top right | bottom right |
+
+> [!TIP]
+> Rather than counting, press the button: the **find button** action returns the `channel` of the button you pressed, together with `channel_type` and `channel_position` describing it.
+
+> [!NOTE]
+> Sensor devices (room sensor, weather station) report their measurements as inputs too, so their channel numbers are not all buttons. Only button inputs can be configured; the error message lists which channels the device actually has.
+
 ## 📋 Service Reference
 
 ### `wiser_by_feller.status_light`
@@ -111,7 +128,7 @@ Configures the device's status LED for a channel (see [⚙️ Device Configurati
 | Parameter       | Required | Type        | Description                                                                                                              |
 |-----------------|----------|-------------|--------------------------------------------------------------------------------------------------------------------------|
 | `device`        | ✅        | `string`    | The target device (load, or scene / secondary control unit).                                                             |
-| `channel`       | ✅        | `"0"`–`"3"` | The button on the device to control.                                                                                     |
+| `channel`       | ✅        | `"0"`–`"3"` | The button on the device to control (see [🔢 Channel numbering](#-channel-numbering)).                                    |
 | `color`         | ✅        | `[r, g, b]` | LED color as RGB values (0–255 each). Used while the load is on, and also while off unless `color_off` is set.            |
 | `color_off`     |          | `[r, g, b]` | LED color while the load is off. When unset, `color` is used for both states. Requires µGateway firmware ≥ 6.0.41 and device firmware ≥ 2.8.2-0. |
 | `brightness_on` | ✅        | `int`       | LED brightness while the load is on (0–100).                                                                             |
@@ -149,6 +166,8 @@ Activates find-me mode: all button LEDs start blinking. Press any physical butto
 | `room_name`   | `str \| null` | Room name resolved from the device's load assignment |
 | `device_name` | `str \| null` | Human-readable device name                           |
 | `scene_name`  | `str \| null` | Name of the linked scene, if the button triggers one |
+| `channel_type`| `str \| null` | What kind of button the channel is: `up down` (rocker), `toggle`, `scene`, … |
+| `channel_position` | `str \| null` | Where the button sits on the front: `single`, `left`, `right`, `top_left`, `bottom_left`, `top_right`, `bottom_right` |
 
 > [!NOTE]
 > Pressing an unmanaged button raises an error instead of returning a response, unless `register_unmanaged` is enabled. The error message names the button's device reference and channel, which can be passed to `register_button`.
@@ -180,7 +199,7 @@ Registers an available (sleeping) physical button on the µGateway so it gets a 
 |-------------------|----------|----------|-----------------------------------------------------------------------------------------------------------|
 | `config_entry_id` |          | `string` | µGateway to register the button on. Optional with a single µGateway; required when multiple are configured. |
 | `device`          | ✅        | `string` | Gateway device reference (e.g. `0000a98f`), as reported by `find_button`.                               |
-| `channel`         | ✅        | `int`    | Input channel of the button on the device.                                                              |
+| `channel`         | ✅        | `int`    | Input channel of the button on the device (see [🔢 Channel numbering](#-channel-numbering)).             |
 
 **Response fields:**
 
@@ -192,6 +211,8 @@ Registers an available (sleeping) physical button on the µGateway so it gets a 
 | `room_name`   | `str \| null` | Room name resolved from the device's load assignment |
 | `device_name` | `str \| null` | Human-readable device name                           |
 | `scene_name`  | `str \| null` | Name of the linked scene, if the button triggers one |
+| `channel_type`| `str \| null` | What kind of button the channel is (e.g. `scene`)     |
+| `channel_position` | `str \| null` | Where the button sits on the front (e.g. `top_right`) |
 
 **Example automation:**
 ```yaml

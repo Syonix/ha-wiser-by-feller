@@ -148,16 +148,16 @@
   "selector": {
     "select_channel": {
       "options": {
-        "0": "Linke (obere) oder mittlere Taste",
-        "1": "Rechte (obere) Taste",
-        "2": "Linke (untere) Taste",
-        "3": "Rechte (untere) Taste"
+        "0": "Kanal 0 (erste Taste)",
+        "1": "Kanal 1 (zweite Taste)",
+        "2": "Kanal 2 (dritte Taste)",
+        "3": "Kanal 3 (vierte Taste)"
       }
     },
     "select_led_index": {
       "options": {
-        "0": "Primär (Hoch/Plus bei Dimmer- oder Motortasten)",
-        "1": "Runter / Minus (nur bei Dimmer- oder Motortasten)"
+        "0": "Primär (obere Hälfte / Plus einer Wippe)",
+        "1": "Sekundär (untere Hälfte / Minus einer Wippe)"
       }
     }
   },
@@ -209,7 +209,7 @@
       "message": "Gerät {device_id} wurde nicht gefunden."
     },
     "invalid_channel": {
-      "message": "Kanal {channel} existiert auf diesem Gerät nicht."
+      "message": "Kanal {channel} ist keine Taste an diesem Gerät. Verfügbare Kanäle: {channels}."
     },
     "status_light_failed": {
       "message": "Statuslicht konnte nicht gesetzt werden: {error}"
@@ -288,7 +288,7 @@
         },
         "channel": {
           "name": "Kanal",
-          "description": "Die bestimmte Taste am Gerät, die gesteuert werden soll."
+          "description": "Welche Taste am Gerät konfiguriert wird. Tasten werden zuerst in der linken Spalte von oben nach unten gezählt, danach in der rechten Spalte; eine Wippe (auf/ab) zählt als ein einzelner Kanal. Mit der Aktion „Taste finden“ lässt sich der Kanal einer Taste ermitteln."
         },
         "brightness_on": {
           "name": "Helligkeit (Last ein)",
@@ -372,7 +372,7 @@
         },
         "channel": {
           "name": "Kanal",
-          "description": "Eingangskanal der Taste am Gerät."
+          "description": "Eingangskanal der Taste am Gerät, wie von der Aktion „Taste finden“ gemeldet."
         }
       }
     },
